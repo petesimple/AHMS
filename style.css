@@ -31,3 +31,25 @@ td, th {
 .hidden {
   display: none;
 }
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #output, #output * {
+    visibility: visible;
+  }
+
+  #output {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    color: black;
+  }
+
+  #printBtn {
+    display: none;
+  }
+}
