@@ -2,8 +2,6 @@
 
 A clean, printable, and offline-capable PWA for generating air hockey tournament match sheets. Designed for tournament directors, scorekeepers, and air hockey enthusiasts.
 
-![Air Hockey Match Sheet Logo](AHMSlogo.png)
-
 ---
 
 ## ✨ Features
