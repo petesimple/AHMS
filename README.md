@@ -52,7 +52,7 @@ A clean, printable, and offline-capable PWA for generating air hockey tournament
 
 ## 👨‍💻 Author
 
-Built with 💙 for the air hockey community by [@yourusername](https://github.com/yourusername)
+Built with 💙 for the air hockey community by [@petesimple](https://github.com/petesimple)
 
 ---
 
