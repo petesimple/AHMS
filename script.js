@@ -25,3 +25,28 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 document.getElementById("printBtn").addEventListener("click", () => {
   window.print();
 });
+
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name) || "";
+}
+
+window.addEventListener("load", () => {
+  const matchNum = getParam("match");
+  const tableNum = getParam("table");
+  const refName = getParam("ref");
+  const playerA = getParam("playerA");
+  const playerB = getParam("playerB");
+
+  if (matchNum || playerA || playerB) {
+    document.getElementById("matchNum").value = matchNum;
+    document.getElementById("tableNum").value = tableNum;
+    document.getElementById("refName").value = refName;
+    document.getElementById("playerA").value = playerA;
+    document.getElementById("playerB").value = playerB;
+
+    // Auto-generate if all required
+    if (matchNum && tableNum && refName && playerA && playerB) {
+      document.getElementById("matchForm").dispatchEvent(new Event("submit"));
+    }
+  }
+});
