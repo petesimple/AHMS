@@ -37,12 +37,6 @@ A clean, printable, and offline-capable PWA for generating air hockey tournament
 - PWA-compliant manifest and service worker
 - GitHub Pages for deployment
 
----
-
-## 📸 Screenshot
-
-![Screenshot](screenshot.png)  
-*Example of a generated match sheet layout.*
 
 ---
 
