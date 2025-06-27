@@ -13,8 +13,8 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
     <p><strong>Table #:</strong> ${tableNum} &nbsp; | &nbsp; <strong>Ref:</strong> ${refName}</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td>64 | ${playerA}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>65 | ${playerB}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>${playerA}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>${playerB}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
 
@@ -58,8 +58,8 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
     <p><strong>Table #:</strong> ______ &nbsp; | &nbsp; <strong>Ref:</strong> ____________</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td>64 | _______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>65 | _______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
   output.classList.remove("hidden");
