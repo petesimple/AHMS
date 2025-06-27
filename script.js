@@ -9,7 +9,7 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 
   const output = document.getElementById("output");
   output.innerHTML = `
-    <h2>2025 AIRHOCKEY WORLD TOURNAMENT SINGLES BRACKET - Match ${matchNum}</h2>
+    <h2>AIRHOCKEY MATCH SHEET - Match ${matchNum}</h2>
     <p><strong>Table #:</strong> ${tableNum} &nbsp; | &nbsp; <strong>Ref:</strong> ${refName}</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
@@ -54,7 +54,7 @@ window.addEventListener("load", () => {
 document.getElementById("printBlankBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
-    <h2>2025 AIRHOCKEY WORLD TOURNAMENT SINGLES BRACKET - Match _____</h2>
+    <h2>AIRHOCKEY MATCH SHEET - Match _____</h2>
     <p><strong>Table #:</strong> ______ &nbsp; | &nbsp; <strong>Ref:</strong> ____________</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
