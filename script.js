@@ -65,3 +65,44 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
 });
+
+document.getElementById("printRankMatchBtn").addEventListener("click", () => {
+  const output = document.getElementById("output");
+  output.innerHTML = `
+    <div class="receipt">
+      <h2>RANK MATCH</h2>
+      <p><strong>Match:</strong> __________</p>
+      <p><strong>Table:</strong> __________</p>
+      <p><strong>Ref:</strong> ______________</p>
+
+      <hr>
+
+      <p><strong>Player A:</strong> ____________________</p>
+      <p>Nat#: ____ Reg#: ____ Loc#: ____</p>
+
+      <p><strong>Player B:</strong> ____________________</p>
+      <p>Nat#: ____ Reg#: ____ Loc#: ____</p>
+
+      <hr>
+
+      <p><strong>Sets & Games:</strong></p>
+      <pre>
+Set 1: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Set 2: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Set 3: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Set 4: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Set 5: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Set 6: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+Set 7: [ ] [ ] [ ] [ ] [ ] [ ] [ ] 
+      </pre>
+
+      <p><strong>Rank Changes:</strong> ____________________</p>
+
+      <p><strong>Notes:</strong></p>
+      <p>______________________________</p>
+    </div>
+  `;
+
+  output.classList.remove("hidden");
+  document.getElementById("printBtn").classList.remove("hidden");
+});
