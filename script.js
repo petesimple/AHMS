@@ -134,9 +134,16 @@ function sendToEpson(text) {
             return;
           }
 
-          device.addText(text + '\n');
-          device.addCut();
-          device.send();
+          device
+            .addText(text + '\n')
+            .addCut()
+            .send(result => {
+              if (result.success) {
+                console.log("✅ Printed successfully!");
+              } else {
+                console.warn("⚠️ Print failed:", result.code);
+              }
+            });
         }
       );
     } else {
