@@ -42,34 +42,10 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 document.getElementById("printBtn").addEventListener("click", () => {
   const outputText = document.getElementById("output").innerText;
   const cleanText = outputText
-    .replace(/\s+\n/g, '\n')   // Trim spaces before line breaks
-    .replace(/\n{3,}/g, '\n\n'); // Avoid extra empty lines
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
 
   sendToPrinter(cleanText);
-});
-
-function getParam(name) {
-  return new URLSearchParams(window.location.search).get(name) || "";
-}
-
-window.addEventListener("load", () => {
-  const matchNum = getParam("match");
-  const tableNum = getParam("table");
-  const refName = getParam("ref");
-  const playerA = getParam("playerA");
-  const playerB = getParam("playerB");
-
-  if (matchNum || playerA || playerB) {
-    document.getElementById("matchNum").value = matchNum;
-    document.getElementById("tableNum").value = tableNum;
-    document.getElementById("refName").value = refName;
-    document.getElementById("playerA").value = playerA;
-    document.getElementById("playerB").value = playerB;
-
-    if (matchNum && tableNum && refName && playerA && playerB) {
-      document.getElementById("matchForm").dispatchEvent(new Event("submit"));
-    }
-  }
 });
 
 document.getElementById("printBlankBtn").addEventListener("click", () => {
@@ -129,4 +105,28 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   `;
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
+});
+
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name) || "";
+}
+
+window.addEventListener("load", () => {
+  const matchNum = getParam("match");
+  const tableNum = getParam("table");
+  const refName = getParam("ref");
+  const playerA = getParam("playerA");
+  const playerB = getParam("playerB");
+
+  if (matchNum || playerA || playerB) {
+    document.getElementById("matchNum").value = matchNum;
+    document.getElementById("tableNum").value = tableNum;
+    document.getElementById("refName").value = refName;
+    document.getElementById("playerA").value = playerA;
+    document.getElementById("playerB").value = playerB;
+
+    if (matchNum && tableNum && refName && playerA && playerB) {
+      document.getElementById("matchForm").dispatchEvent(new Event("submit"));
+    }
+  }
 });
