@@ -1,4 +1,4 @@
-function sendToPrinterRaw(text) {
+function sendToPrinter(text) {
   fetch("http://192.168.1.4:3000/print", {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
@@ -14,6 +14,7 @@ function sendToPrinterRaw(text) {
     alert("⚠️ Could not connect to printer at 192.168.1.4.");
   });
 }
+
 document.getElementById("matchForm").addEventListener("submit", function(e) {
   e.preventDefault();
 
@@ -44,10 +45,8 @@ document.getElementById("printBtn").addEventListener("click", () => {
     .replace(/\s+\n/g, '\n')   // Trim spaces before line breaks
     .replace(/\n{3,}/g, '\n\n'); // Avoid extra empty lines
 
-  sendToPrinterRaw(cleanText);
+  sendToPrinter(cleanText);
 });
-
-  
 
 function getParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -67,7 +66,6 @@ window.addEventListener("load", () => {
     document.getElementById("playerA").value = playerA;
     document.getElementById("playerB").value = playerB;
 
-    // Auto-generate if all required
     if (matchNum && tableNum && refName && playerA && playerB) {
       document.getElementById("matchForm").dispatchEvent(new Event("submit"));
     }
@@ -129,63 +127,6 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
       <p>______________________________</p>
     </div>
   `;
-
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
-});
-
-function sendToEpson(text) {
-  const printerIP = "192.168.1.19"; // <-- Replace with your printer's IP
-  const ePosDev = new epson.ePOSDevice();
-
-  ePosDev.connect(printerIP, 8008, status => {
-    if (status === 'OK' || status === 'SSL_CONNECT_OK') {
-      ePosDev.createDevice(
-        'local_printer',
-        ePosDev.DEVICE_TYPE_PRINTER,
-        { crypto: false, buffer: false },
-        device => {
-          if (!device) {
-            alert('Printer device creation failed.');
-            return;
-          }
-
-          device
-            .addText(text + '\n')
-            .addCut()
-            .send(result => {
-              if (result.success) {
-                console.log("✅ Printed successfully!");
-              } else {
-                console.warn("⚠️ Print failed:", result.code);
-              }
-            });
-        }
-      );
-    } else {
-      alert('Connection to printer failed: ' + status);
-    }
-  });
-}
-
-window.addEventListener("load", () => {
-  const printerIP = "192.168.1.19";
-  const ePosDev = new epson.ePOSDevice();
-
-  ePosDev.connect(printerIP, 8008, status => {
-    const statusDiv = document.createElement("div");
-    statusDiv.style.textAlign = "center";
-    statusDiv.style.marginTop = "10px";
-
-    if (status === 'OK' || status === 'SSL_CONNECT_OK') {
-      statusDiv.textContent = "🖨️ Printer is ONLINE";
-      statusDiv.style.color = "green";
-      ePosDev.disconnect();
-    } else {
-      statusDiv.textContent = "⚠️ Printer OFFLINE";
-      statusDiv.style.color = "red";
-    }
-
-    document.body.insertBefore(statusDiv, document.getElementById("matchForm"));
-  });
 });
