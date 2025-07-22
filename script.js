@@ -151,3 +151,25 @@ function sendToEpson(text) {
     }
   });
 }
+
+window.addEventListener("load", () => {
+  const printerIP = "192.168.1.19";
+  const ePosDev = new epson.ePOSDevice();
+
+  ePosDev.connect(printerIP, 8008, status => {
+    const statusDiv = document.createElement("div");
+    statusDiv.style.textAlign = "center";
+    statusDiv.style.marginTop = "10px";
+
+    if (status === 'OK' || status === 'SSL_CONNECT_OK') {
+      statusDiv.textContent = "🖨️ Printer is ONLINE";
+      statusDiv.style.color = "green";
+      ePosDev.disconnect();
+    } else {
+      statusDiv.textContent = "⚠️ Printer OFFLINE";
+      statusDiv.style.color = "red";
+    }
+
+    document.body.insertBefore(statusDiv, document.getElementById("matchForm"));
+  });
+});
