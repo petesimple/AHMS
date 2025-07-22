@@ -23,8 +23,15 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 });
 
 document.getElementById("printBtn").addEventListener("click", () => {
-  window.print();
+  const outputText = document.getElementById("output").innerText;
+  const cleanText = outputText
+    .replace(/\s+\n/g, '\n')   // Trim spaces before line breaks
+    .replace(/\n{3,}/g, '\n\n'); // Avoid extra empty lines
+
+  sendToEpson(cleanText);
 });
+
+  
 
 function getParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
