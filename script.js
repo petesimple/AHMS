@@ -110,3 +110,30 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
 });
+
+function sendToEpson(text) {
+  const printerIP = "192.168.1.19"; // <-- Replace with your printer's IP
+  const ePosDev = new epson.ePOSDevice();
+
+  ePosDev.connect(printerIP, 8008, status => {
+    if (status === 'OK' || status === 'SSL_CONNECT_OK') {
+      ePosDev.createDevice(
+        'local_printer',
+        ePosDev.DEVICE_TYPE_PRINTER,
+        { crypto: false, buffer: false },
+        device => {
+          if (!device) {
+            alert('Printer device creation failed.');
+            return;
+          }
+
+          device.addText(text + '\n');
+          device.addCut();
+          device.send();
+        }
+      );
+    } else {
+      alert('Connection to printer failed: ' + status);
+    }
+  });
+}
