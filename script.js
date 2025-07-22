@@ -44,7 +44,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
     .replace(/\s+\n/g, '\n')   // Trim spaces before line breaks
     .replace(/\n{3,}/g, '\n\n'); // Avoid extra empty lines
 
-  sendToEpson(cleanText);
+  sendToPrinterRaw(cleanText);
 });
 
   
