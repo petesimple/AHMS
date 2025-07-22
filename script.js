@@ -1,3 +1,19 @@
+function sendToPrinterRaw(text) {
+  fetch("http://192.168.1.4:3000/print", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: text
+  })
+  .then(res => res.text())
+  .then(msg => {
+    console.log("✅", msg);
+    alert("🖨️ Print sent!");
+  })
+  .catch(err => {
+    console.error("❌ Print failed:", err);
+    alert("⚠️ Could not connect to printer at 192.168.1.4.");
+  });
+}
 document.getElementById("matchForm").addEventListener("submit", function(e) {
   e.preventDefault();
 
