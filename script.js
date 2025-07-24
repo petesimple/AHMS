@@ -37,6 +37,7 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
+  document.getElementById("printBrowserBtn").classList.remove("hidden");
 });
 
 document.getElementById("printBtn").addEventListener("click", () => {
@@ -46,6 +47,10 @@ document.getElementById("printBtn").addEventListener("click", () => {
     .replace(/\n{3,}/g, '\n\n');
 
   sendToPrinter(cleanText);
+});
+
+document.getElementById("printBrowserBtn").addEventListener("click", () => {
+  window.print();
 });
 
 document.getElementById("printBlankBtn").addEventListener("click", () => {
@@ -61,6 +66,7 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
   `;
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
+  document.getElementById("printBrowserBtn").classList.remove("hidden");
 });
 
 document.getElementById("printRankMatchBtn").addEventListener("click", () => {
@@ -105,6 +111,7 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   `;
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
+  document.getElementById("printBrowserBtn").classList.remove("hidden");
 });
 
 function getParam(name) {
