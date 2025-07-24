@@ -11,7 +11,7 @@ function sendToPrinter(text) {
   })
   .catch(err => {
     console.error("❌ Print failed:", err);
-    alert("⚠️ Could not connect to printer at 192.168.1.4.");
+    alert("⚠️ Could not connect to printer at 192.168.1.19.");
   });
 }
 
