@@ -1,5 +1,5 @@
 function sendToPrinter(text) {
-  fetch("http://192.168.1.4:3000/print", {
+  fetch("http://192.168.1.19:3000/print", {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
     body: text
