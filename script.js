@@ -162,6 +162,7 @@ window.addEventListener("load", () => {
 
     if (matchNum && tableNum && refName && playerA && playerB) {
       document.getElementById("matchForm").dispatchEvent(new Event("submit"));
+      showAllButtons();
     }
   }
 });
