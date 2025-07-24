@@ -114,6 +114,22 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   document.getElementById("printBrowserBtn").classList.remove("hidden");
 });
 
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  const outputText = document.getElementById("output").innerText;
+  const blob = new Blob([outputText], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "airhockey_matchcard.txt";
+  link.click();
+
+  URL.revokeObjectURL(url);
+  alert(
+    `✅ Match card downloaded!\n\n🖨️ To print in Terminal:\n  lp path/to/airhockey_matchcard.txt\n\n🖨️ On Windows CMD:\n  notepad /p path\\to\\airhockey_matchcard.txt`
+  );
+});
+
 function getParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
 }
