@@ -124,13 +124,22 @@ document.getElementById("downloadBtn").addEventListener("click", () => {
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = "airhockey_matchcard.txt";
-  link.click();
 
+  // ✅ Insert this below:
+  const matchNum = document.getElementById("matchNum")?.value || "";
+  const filename = `Match_${matchNum || "Blank"}_${Date.now()}.txt`;
+  link.download = filename;
+
+  link.click();
   URL.revokeObjectURL(url);
-  alert(
-    `✅ Match card downloaded!\n\n🖨️ To print in Terminal:\n  lp path/to/airhockey_matchcard.txt\n\n🖨️ On Windows CMD:\n  notepad /p path\\to\\airhockey_matchcard.txt`
-  );
+
+  alert(`✅ Match card downloaded as "${filename}"!
+
+🖨️ To print from Terminal (macOS/Linux):
+lp path/to/${filename}
+
+🖨️ To print from CMD (Windows):
+notepad /p path\\to\\${filename}`);
 });
 
 function getParam(name) {
