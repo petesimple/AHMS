@@ -1,20 +1,65 @@
-function sendToPrinter(text) {
-  fetch("http://192.168.1.19:3000/print", {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: text
-  })
-  .then(res => res.text())
-  .then(msg => {
-    console.log("✅", msg);
-    alert("🖨️ Print sent!");
-  })
-  .catch(err => {
-    console.error("❌ Print failed:", err);
-    alert("⚠️ Could not connect to printer at 192.168.1.19.");
-  });
+// ===========================================================
+// AHMS Client Script (Plan A: JSON to Node print server)
+// Paste this whole block into your script.js
+// ===========================================================
+
+// 🔧 CHANGE THIS if your print server IP/port is different
+const PRINT_SERVER_URL = "http://192.168.1.19:3000/print";
+
+// ✅ Helper: build a structured JSON payload for the Node print server
+function buildPrintPayload() {
+  const matchNum = document.getElementById("matchNum").value;
+  const tableNum = document.getElementById("tableNum").value;
+  const refName  = document.getElementById("refName").value;
+  const playerA  = document.getElementById("playerA").value;
+  const playerB  = document.getElementById("playerB").value;
+
+  // Take whatever is in the #output div, clean up spacing,
+  // then split into line-by-line text for ESC/POS.
+  const text = document.getElementById("output").innerText
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  const lines = text.split("\n");
+
+  // Optional QR: deep link back to this match card
+  const url = new URL(window.location.href);
+  url.searchParams.set("match", matchNum);
+  url.searchParams.set("table", tableNum);
+  url.searchParams.set("ref", refName);
+  url.searchParams.set("playerA", playerA);
+  url.searchParams.set("playerB", playerB);
+
+  return {
+    title: `AIRHOCKEY MATCH SHEET - Match ${matchNum || ""}`.trim(),
+    lines,
+    qr: url.toString()
+  };
 }
 
+// ✅ JSON sender: posts payload to Node print server
+async function sendToPrinterJSON(payload) {
+  try {
+    const res = await fetch(PRINT_SERVER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload) // server expects JSON
+    });
+    const msg = await res.text();
+    if (!res.ok) throw new Error(msg || "Printer server error");
+    console.log("✅", msg);
+    alert("🖨️ Print sent!");
+  } catch (err) {
+    console.error("❌ Print failed:", err);
+    alert("⚠️ Could not connect to printer.\n" + err.message);
+  }
+}
+
+// ===========================================================
+// Form submission: build HTML preview of the match sheet
+// (Your existing code — unchanged except for formatting)
+// ===========================================================
 document.getElementById("matchForm").addEventListener("submit", function(e) {
   e.preventDefault();
 
@@ -37,23 +82,26 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
-document.getElementById("printBrowserBtn").classList.remove("hidden");
-document.getElementById("downloadBtn").classList.remove("hidden");
+  document.getElementById("printBrowserBtn").classList.remove("hidden");
+  document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
+// ===========================================================
+// Print buttons
+// ===========================================================
+
+// ✅ Updated: printBtn now builds payload + sends JSON to Node server
 document.getElementById("printBtn").addEventListener("click", () => {
-  const outputText = document.getElementById("output").innerText;
-  const cleanText = outputText
-    .replace(/\s+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n');
-
-  sendToPrinter(cleanText);
+  const payload = buildPrintPayload();  // build structured payload
+  sendToPrinterJSON(payload);           // send to print server
 });
 
+// Browser’s built-in print (unchanged)
 document.getElementById("printBrowserBtn").addEventListener("click", () => {
   window.print();
 });
 
+// Blank sheet button (unchanged)
 document.getElementById("printBlankBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -67,10 +115,11 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
   `;
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
-document.getElementById("printBrowserBtn").classList.remove("hidden");
-document.getElementById("downloadBtn").classList.remove("hidden");
+  document.getElementById("printBrowserBtn").classList.remove("hidden");
+  document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
+// Rank match button (unchanged)
 document.getElementById("printRankMatchBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -113,10 +162,11 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   `;
   output.classList.remove("hidden");
   document.getElementById("printBtn").classList.remove("hidden");
-document.getElementById("printBrowserBtn").classList.remove("hidden");
-document.getElementById("downloadBtn").classList.remove("hidden");
+  document.getElementById("printBrowserBtn").classList.remove("hidden");
+  document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
+// Download button (unchanged)
 document.getElementById("downloadBtn").addEventListener("click", () => {
   const outputText = document.getElementById("output").innerText;
   const blob = new Blob([outputText], { type: "text/plain" });
@@ -125,7 +175,6 @@ document.getElementById("downloadBtn").addEventListener("click", () => {
   const link = document.createElement("a");
   link.href = url;
 
-  // ✅ Insert this below:
   const matchNum = document.getElementById("matchNum")?.value || "";
   const filename = `Match_${matchNum || "Blank"}_${Date.now()}.txt`;
   link.download = filename;
@@ -142,6 +191,9 @@ lp path/to/${filename}
 notepad /p path\\to\\${filename}`);
 });
 
+// ===========================================================
+// URL param auto-fill (unchanged)
+// ===========================================================
 function getParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
 }
@@ -162,7 +214,7 @@ window.addEventListener("load", () => {
 
     if (matchNum && tableNum && refName && playerA && playerB) {
       document.getElementById("matchForm").dispatchEvent(new Event("submit"));
-      showAllButtons();
+      if (typeof showAllButtons === "function") showAllButtons();
     }
   }
 });
