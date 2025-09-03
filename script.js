@@ -1,21 +1,21 @@
 // ===========================================================
-// AHMS Client Script (Plan A: JSON to Node print server)
+// AHMS Client Script (Plan A: JSON to Node print server - RAW)
 // Paste this whole block into your script.js
 // ===========================================================
 
-// 🔧 CHANGE THIS if your print server IP/port is different
-const PRINT_SERVER_URL = "http://192.168.1.19:3000/print";
+// 🔧 CHANGE THIS: set to your Mac's LAN IP (where server.js runs), keep /print-raw
+// Find your Mac IP: `ipconfig getifaddr en0` (Wi-Fi) or `ipconfig getifaddr en1` (Ethernet)
+const PRINT_SERVER_URL = "http://192.168.1.19:3000/print-raw"; // ⬅️ changed to /print-raw
 
-// ✅ Helper: build a structured JSON payload for the Node print server
-function buildPrintPayload() {
+// ✅ Build payload for the RAW endpoint (expects only { title, lines })
+function buildPrintPayloadRaw() {
   const matchNum = document.getElementById("matchNum").value;
   const tableNum = document.getElementById("tableNum").value;
   const refName  = document.getElementById("refName").value;
   const playerA  = document.getElementById("playerA").value;
   const playerB  = document.getElementById("playerB").value;
 
-  // Take whatever is in the #output div, clean up spacing,
-  // then split into line-by-line text for ESC/POS.
+  // Take whatever is in #output, normalize whitespace, split by lines
   const text = document.getElementById("output").innerText
     .replace(/\s+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -23,28 +23,19 @@ function buildPrintPayload() {
 
   const lines = text.split("\n");
 
-  // Optional QR: deep link back to this match card
-  const url = new URL(window.location.href);
-  url.searchParams.set("match", matchNum);
-  url.searchParams.set("table", tableNum);
-  url.searchParams.set("ref", refName);
-  url.searchParams.set("playerA", playerA);
-  url.searchParams.set("playerB", playerB);
-
   return {
     title: `AIRHOCKEY MATCH SHEET - Match ${matchNum || ""}`.trim(),
-    lines,
-    qr: url.toString()
+    lines // ⬅️ RAW route only needs title + lines
   };
 }
 
-// ✅ JSON sender: posts payload to Node print server
-async function sendToPrinterJSON(payload) {
+// ✅ Send JSON to the RAW endpoint
+async function sendToPrinterRAW(payload) {
   try {
     const res = await fetch(PRINT_SERVER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload) // server expects JSON
+      body: JSON.stringify(payload)
     });
     const msg = await res.text();
     if (!res.ok) throw new Error(msg || "Printer server error");
@@ -58,7 +49,7 @@ async function sendToPrinterJSON(payload) {
 
 // ===========================================================
 // Form submission: build HTML preview of the match sheet
-// (Your existing code — unchanged except for formatting)
+// (unchanged)
 // ===========================================================
 document.getElementById("matchForm").addEventListener("submit", function(e) {
   e.preventDefault();
@@ -90,18 +81,18 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 // Print buttons
 // ===========================================================
 
-// ✅ Updated: printBtn now builds payload + sends JSON to Node server
+// ⬅️ Updated: now calls the RAW sender
 document.getElementById("printBtn").addEventListener("click", () => {
-  const payload = buildPrintPayload();  // build structured payload
-  sendToPrinterJSON(payload);           // send to print server
+  const payload = buildPrintPayloadRaw();
+  sendToPrinterRAW(payload);
 });
 
-// Browser’s built-in print (unchanged)
+// Browser print (unchanged)
 document.getElementById("printBrowserBtn").addEventListener("click", () => {
   window.print();
 });
 
-// Blank sheet button (unchanged)
+// Blank sheet (unchanged)
 document.getElementById("printBlankBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -119,7 +110,7 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
   document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
-// Rank match button (unchanged)
+// Rank match (unchanged)
 document.getElementById("printRankMatchBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -166,7 +157,7 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
-// Download button (unchanged)
+// Download (unchanged)
 document.getElementById("downloadBtn").addEventListener("click", () => {
   const outputText = document.getElementById("output").innerText;
   const blob = new Blob([outputText], { type: "text/plain" });
