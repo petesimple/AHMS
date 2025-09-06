@@ -5,7 +5,7 @@
 
 // 🔧 CHANGE THIS: set to your Mac's LAN IP (where server.js runs), keep /print-raw
 // Find your Mac IP: `ipconfig getifaddr en0` (Wi-Fi) or `ipconfig getifaddr en1` (Ethernet)
-const PRINT_SERVER_URL = "http://192.168.1.2:3000/print-raw"; // ⬅️ changed to /print-raw
+const PRINT_SERVER_URL = "http://192.168.1.2:3000/print"; // ⬅️ changed to /print-raw
 
 // ✅ Build payload for the RAW endpoint (expects only { title, lines })
 function buildPrintPayloadRaw() {
