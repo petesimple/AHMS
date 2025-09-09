@@ -1,35 +1,99 @@
 // ===========================================================
-// AHMS Client Script (Plan A: JSON to Node print server - RAW)
-// Paste this whole block into your script.js
+// AHMS Client Script (drop-in)
+// Epson RAW (9100) printing with ASCII table borders
 // ===========================================================
 
-// 🔧 CHANGE THIS: set to your Mac's LAN IP (where server.js runs), keep /print-raw
-// Find your Mac IP: `ipconfig getifaddr en0` (Wi-Fi) or `ipconfig getifaddr en1` (Ethernet)
-const PRINT_SERVER_URL = "http://192.168.1.2:3000/print"; // ⬅️ changed to /print-raw
+// 🔧 Point this at your Mac running the Node print server:
+const PRINT_SERVER_URL = "http://192.168.1.2:3000/print";
 
-// ✅ Build payload for the RAW endpoint (expects only { title, lines })
-function buildPrintPayloadRaw() {
-  const matchNum = document.getElementById("matchNum").value;
-  const tableNum = document.getElementById("tableNum").value;
-  const refName  = document.getElementById("refName").value;
-  const playerA  = document.getElementById("playerA").value;
-  const playerB  = document.getElementById("playerB").value;
+// ===========================================================
+// Fixed-width helpers (48 columns total on 80mm paper)
+// Table layout: | Player(18) | 7 × Game(3) |
+// Line length = sum(widths) + 9 borders = 48
+// ===========================================================
+const RECEIPT_WIDTH = 48;
+const COLS = [18, 3, 3, 3, 3, 3, 3, 3]; // Player + 1..7
 
-  // Take whatever is in #output, normalize whitespace, split by lines
-  const text = document.getElementById("output").innerText
-    .replace(/\s+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  const lines = text.split("\n");
-
-  return {
-    title: `AIRHOCKEY MATCH SHEET - Match ${matchNum || ""}`.trim(),
-    lines // ⬅️ RAW route only needs title + lines
-  };
+function padLeft(s, w) {
+  s = String(s ?? "");
+  return s.length >= w ? s.slice(0, w) : " ".repeat(w - s.length) + s;
+}
+function padRight(s, w) {
+  s = String(s ?? "");
+  return s.length >= w ? s.slice(0, w) : s + " ".repeat(w - s.length);
+}
+function padCenter(s, w) {
+  s = String(s ?? "").slice(0, w);
+  const space = Math.max(0, w - s.length);
+  const left = Math.floor(space / 2);
+  const right = space - left;
+  return " ".repeat(left) + s + " ".repeat(right);
+}
+function centerLine(s) {
+  return padCenter(s, RECEIPT_WIDTH);
 }
 
-// ✅ Send JSON to the RAW endpoint
+// +----+---+---+... line
+function borderLine() {
+  let out = "+";
+  for (const w of COLS) out += "-".repeat(w) + "+";
+  return out;
+}
+
+// | cell | cell | ... line
+function rowLine(cells, align = "left") {
+  let out = "|";
+  for (let i = 0; i < COLS.length; i++) {
+    const w = COLS[i];
+    const txt = cells[i] ?? "";
+    const padded =
+      align === "center" ? padCenter(txt, w)
+      : align === "right"  ? padLeft(txt, w)
+      : padRight(txt, w);
+    out += padded + "|";
+  }
+  return out;
+}
+
+// underline inside first cell
+function underlineCell(len) {
+  const lineLen = Math.max(0, len - 4); // 2-space margins
+  return "  " + "_".repeat(lineLen) + "  ";
+}
+
+// ===========================================================
+// Build receipt text that matches the screenshot
+// ===========================================================
+function buildReceiptLines() {
+  const matchNum = document.getElementById("matchNum").value || "_____";
+  const tableNum = document.getElementById("tableNum").value || "______";
+  const refName  = document.getElementById("refName").value  || "____________";
+
+  const lines = [];
+  lines.push(centerLine(`AIRHOCKEY MATCH SHEET - Match ${matchNum}`));
+  lines.push(""); // spacer
+  lines.push(padRight(`Table #: ${tableNum}   |   Ref: ${refName}`, RECEIPT_WIDTH));
+  lines.push(""); // spacer before table
+
+  // Table header + two rows
+  lines.push(borderLine());
+  lines.push(rowLine(["Player", "1", "2", "3", "4", "5", "6", "7"], "center"));
+  lines.push(borderLine());
+  lines.push(rowLine([underlineCell(COLS[0]), "", "", "", "", "", "", ""], "left"));
+  lines.push(borderLine());
+  lines.push(rowLine([underlineCell(COLS[0]), "", "", "", "", "", "", ""], "left"));
+  lines.push(borderLine());
+
+  // tail for clean cut
+  lines.push("");
+  lines.push("");
+
+  return { title: `AIRHOCKEY MATCH SHEET - Match ${matchNum}`.trim(), lines };
+}
+
+// ===========================================================
+// Send JSON to Node print server (which sends RAW 9100)
+// ===========================================================
 async function sendToPrinterRAW(payload) {
   try {
     const res = await fetch(PRINT_SERVER_URL, {
@@ -48,8 +112,7 @@ async function sendToPrinterRAW(payload) {
 }
 
 // ===========================================================
-// Form submission: build HTML preview of the match sheet
-// (unchanged)
+// Form submission: HTML preview (unchanged)
 // ===========================================================
 document.getElementById("matchForm").addEventListener("submit", function(e) {
   e.preventDefault();
@@ -62,12 +125,12 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 
   const output = document.getElementById("output");
   output.innerHTML = `
-    <h2>AIRHOCKEY MATCH SHEET - Match ${matchNum}</h2>
-    <p><strong>Table #:</strong> ${tableNum} &nbsp; | &nbsp; <strong>Ref:</strong> ${refName}</p>
+    <h2>AIRHOCKEY MATCH SHEET - Match ${matchNum || "_____"}</h2>
+    <p><strong>Table #:</strong> ${tableNum || "_______"} &nbsp; | &nbsp; <strong>Ref:</strong> ${refName || "____________"}</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td>${playerA}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>${playerB}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
 
@@ -78,21 +141,17 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 });
 
 // ===========================================================
-// Print buttons
+// Print / Browser print / Blank / Rank Match / Download
 // ===========================================================
-
-// ⬅️ Updated: now calls the RAW sender
 document.getElementById("printBtn").addEventListener("click", () => {
-  const payload = buildPrintPayloadRaw();
+  const payload = buildReceiptLines(); // ASCII-border version
   sendToPrinterRAW(payload);
 });
 
-// Browser print (unchanged)
 document.getElementById("printBrowserBtn").addEventListener("click", () => {
   window.print();
 });
 
-// Blank sheet (unchanged)
 document.getElementById("printBlankBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -100,8 +159,8 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
     <p><strong>Table #:</strong> ______ &nbsp; | &nbsp; <strong>Ref:</strong> ____________</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
   output.classList.remove("hidden");
@@ -110,7 +169,7 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
   document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
-// Rank match (unchanged)
+// Rank Match (unchanged preview only)
 document.getElementById("printRankMatchBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
