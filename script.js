@@ -1,118 +1,162 @@
 // ===========================================================
 // AHMS Client Script (drop-in)
-// RAW receipt-safe formatting to Epson via Node server
+// Prints a CANVAS IMAGE to Epson via Node server (/print-image)
+// Browser preview & other buttons remain unchanged
 // ===========================================================
 
-// 🔧 Your Node print server endpoint:
-const PRINT_SERVER_URL = "http://192.168.1.2:3000/print"; // keep /print route
+// 🔧 Your Node print server base:
+const PRINT_SERVER_URL = "http://192.168.1.2:3000";
 
-// ---- Fixed-width receipt helpers (48-col default) ----
-const RECEIPT_WIDTH = 48;
+// ============ Canvas drawing (matches the card layout) ============
+function drawMatchCardCanvas({ matchNum, tableNum, refName }) {
+  // 80mm Epson typically ~576 dots wide at 203 dpi
+  const W = 576;
+  const H = 520; // grows if needed
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
 
-function padRight(str = "", len = RECEIPT_WIDTH) {
-  const s = String(str);
-  return s.length >= len ? s.slice(0, len) : s + " ".repeat(len - s.length);
+  // helpers
+  const BLACK = "#000000";
+  const GRAY = "#000000";
+  const P = 20; // outer padding
+  const LINE = 2; // line thickness
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = BLACK;
+  ctx.strokeStyle = BLACK;
+  ctx.lineWidth = LINE;
+
+  // Title
+  const title = `AIRHOCKEY MATCH SHEET - Match ${matchNum || "_____"}`;
+  ctx.font = "bold 40px Arial";
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  const titleX = P;
+  let y = P;
+  ctx.fillText(title, titleX, y);
+  y += 54;
+
+  // Info row
+  ctx.font = "bold 26px Arial";
+  const infoL = `Table #: ${tableNum || "______"}`;
+  const infoR = `Ref: ${refName || "____________"}`;
+
+  ctx.fillText(infoL, P, y);
+  ctx.textAlign = "right";
+  ctx.fillText(infoR, W - P, y);
+  ctx.textAlign = "left";
+  y += 30;
+
+  // Table box geometry
+  y += 18;
+  const boxX = P;
+  const boxY = y;
+  const boxW = W - P * 2;
+  const rowH = 56;
+  const headH = 46;
+  const rows = 3; // header + two player rows
+  const boxH = headH + rowH * 2;
+
+  // Outer box
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+  // Vertical columns: Player | 1..7
+  const playerColW = Math.round(boxW * 0.58); // visually like your image
+  const gameCols = 7;
+  const gameColW = Math.floor((boxW - playerColW) / gameCols);
+
+  // Header row line
+  ctx.beginPath();
+  ctx.moveTo(boxX, boxY + headH);
+  ctx.lineTo(boxX + boxW, boxY + headH);
+  ctx.stroke();
+
+  // Row separator (between players)
+  ctx.beginPath();
+  ctx.moveTo(boxX, boxY + headH + rowH);
+  ctx.lineTo(boxX + boxW, boxY + headH + rowH);
+  ctx.stroke();
+
+  // Vertical line after "Player" column
+  ctx.beginPath();
+  ctx.moveTo(boxX + playerColW, boxY);
+  ctx.lineTo(boxX + playerColW, boxY + boxH);
+  ctx.stroke();
+
+  // Vertical grid lines for 7 game columns
+  for (let i = 1; i < gameCols; i++) {
+    const x = boxX + playerColW + i * gameColW;
+    ctx.beginPath();
+    ctx.moveTo(x, boxY + headH);
+    ctx.lineTo(x, boxY + boxH);
+    ctx.stroke();
+  }
+
+  // Header labels
+  ctx.font = "bold 24px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Player", boxX + playerColW / 2, boxY + (headH - 24) / 2 + 4);
+
+  for (let i = 0; i < gameCols; i++) {
+    const cx = boxX + playerColW + i * gameColW + gameColW / 2;
+    ctx.fillText(String(i + 1), cx, boxY + (headH - 24) / 2 + 4);
+  }
+  ctx.textAlign = "left";
+
+  // Player name underlines in first column (two rows)
+  ctx.strokeStyle = GRAY;
+  ctx.lineWidth = 2;
+  const underlineInset = 20;
+  const u1y = boxY + headH + Math.floor(rowH * 0.5);
+  const u2y = boxY + headH + rowH + Math.floor(rowH * 0.5);
+  const uL = boxX + underlineInset;
+  const uR = boxX + playerColW - underlineInset;
+
+  ctx.beginPath();
+  ctx.moveTo(uL, u1y);
+  ctx.lineTo(uR, u1y);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(uL, u2y);
+  ctx.lineTo(uR, u2y);
+  ctx.stroke();
+
+  // Notes label
+  y = boxY + boxH + 28;
+  ctx.fillStyle = BLACK;
+  ctx.font = "bold 26px Arial";
+  ctx.fillText("Notes:", P, y);
+
+  // return PNG data URL
+  return canvas.toDataURL("image/png");
 }
-function padLeft(str = "", len = RECEIPT_WIDTH) {
-  const s = String(str);
-  return s.length >= len ? s.slice(0, len) : " ".repeat(len - s.length) + s;
-}
-function center(str = "", len = RECEIPT_WIDTH) {
-  const s = String(str).slice(0, len);
-  const space = Math.max(0, len - s.length);
-  const left = Math.floor(space / 2);
-  const right = space - left;
-  return " ".repeat(left) + s + " ".repeat(right);
-}
 
-// 48-col split: Player(18) | 7 game cells @4 each (28) | fits ≤ 48
-const PLAYER_COL = 18;
-const GAME_COL = 4;
-const GAME_COUNT = 7;
-
-function makeGameHeader() {
-  const gameNums = Array.from({ length: GAME_COUNT }, (_, i) =>
-    padLeft(String(i + 1), GAME_COL)
-  ).join("");
-  return padRight("Player", PLAYER_COL) + gameNums;
-}
-
-function makePlayerRow(name = "") {
-  const clean = (name || "").trim();
-  const cells = Array.from({ length: GAME_COUNT }, () => padLeft("[  ]", GAME_COL)).join("");
-  return padRight(clean, PLAYER_COL) + cells;
-}
-
-function makeDivider(char = "-") {
-  return char.repeat(RECEIPT_WIDTH);
-}
-
-// Build a clean, fixed-width receipt independent of the HTML table
-function buildReceiptLines() {
-  const matchNum = document.getElementById("matchNum").value || "";
-  const tableNum = document.getElementById("tableNum").value || "";
-  const refName  = document.getElementById("refName").value || "";
-  const playerA  = document.getElementById("playerA").value || "";
-  const playerB  = document.getElementById("playerB").value || "";
-
-  const lines = [];
-  lines.push(center("AIRHOCKEY MATCH SHEET", RECEIPT_WIDTH));
-  lines.push(center(`Match ${matchNum}`, RECEIPT_WIDTH));
-  lines.push(makeDivider());
-  lines.push(padRight(`Table: ${tableNum}`));
-  lines.push(padRight(`Ref:   ${refName}`));
-  lines.push(makeDivider());
-  lines.push(makeGameHeader());
-  lines.push(makeDivider());
-  lines.push(makePlayerRow(playerA));
-  lines.push(makePlayerRow(playerB));
-  lines.push(makeDivider());
-  lines.push("Notes:");
-  lines.push("");
-  lines.push("");
-  lines.push("");
-  lines.push("");
-
-  return { title: `AIRHOCKEY MATCH SHEET - Match ${matchNum}`.trim(), lines };
-}
-
-// Kept for preview/table rendering on the page (unused by print)
-function buildPrintPayloadRaw() {
-  const text = document.getElementById("output").innerText
-    .replace(/\s+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  const lines = text.split("\n");
-  const matchNum = document.getElementById("matchNum").value || "";
-  return {
-    title: `AIRHOCKEY MATCH SHEET - Match ${matchNum}`.trim(),
-    lines
-  };
-}
-
-// Send JSON to Node print server (/print → RAW 9100 downstream)
-async function sendToPrinterRAW(payload) {
+// ============ Send image to server ============
+async function sendImageToPrinter({ pngDataUrl, title }) {
   try {
-    const res = await fetch(PRINT_SERVER_URL, {
+    const res = await fetch(`${PRINT_SERVER_URL}/print-image`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        title: title || "AIRHOCKEY MATCH SHEET",
+        imageBase64: pngDataUrl.split(",")[1] // strip data URL prefix
+      })
     });
     const msg = await res.text();
     if (!res.ok) throw new Error(msg || "Printer server error");
-    console.log("✅", msg);
-    alert("🖨️ Print sent!");
+    alert("🖨️ Printed!");
   } catch (err) {
-    console.error("❌ Print failed:", err);
+    console.error(err);
     alert("⚠️ Could not connect to printer.\n" + err.message);
   }
 }
 
-// ===========================================================
-// Form submission: build HTML preview of the match sheet
-// (unchanged visual preview for the page)
-// ===========================================================
-document.getElementById("matchForm").addEventListener("submit", function(e) {
+// ============ Existing preview (unchanged) ============
+document.getElementById("matchForm").addEventListener("submit", function (e) {
   e.preventDefault();
 
   const matchNum = document.getElementById("matchNum").value;
@@ -127,8 +171,8 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
     <p><strong>Table #:</strong> ${tableNum || "_______"} &nbsp; | &nbsp; <strong>Ref:</strong> ${refName || "____________"}</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td>${playerA || "<span style='display:inline-block;width:85%;'>&nbsp;</span><hr/>"}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>${playerB || "<span style='display:inline-block;width:85%;'>&nbsp;</span><hr/>"}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
 
@@ -138,22 +182,22 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
   document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
-// ===========================================================
-// Print buttons
-// ===========================================================
-
-// ✅ Print uses the fixed-width receipt lines from your snippet
+// ============ Print (now uses canvas→image) ============
 document.getElementById("printBtn").addEventListener("click", () => {
-  const payload = buildReceiptLines(); // receipt-safe text
-  sendToPrinterRAW(payload);
+  const matchNum = document.getElementById("matchNum").value || "";
+  const tableNum = document.getElementById("tableNum").value || "";
+  const refName  = document.getElementById("refName").value  || "";
+
+  const png = drawMatchCardCanvas({ matchNum, tableNum, refName });
+  const title = `AIRHOCKEY MATCH SHEET - Match ${matchNum || ""}`;
+  sendImageToPrinter({ pngDataUrl: png, title });
 });
 
-// Browser print (unchanged)
+// ============ Other buttons unchanged ============
 document.getElementById("printBrowserBtn").addEventListener("click", () => {
   window.print();
 });
 
-// Blank sheet (unchanged preview)
 document.getElementById("printBlankBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -161,8 +205,8 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
     <p><strong>Table #:</strong> ______ &nbsp; | &nbsp; <strong>Ref:</strong> ____________</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
   output.classList.remove("hidden");
@@ -171,7 +215,6 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
   document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
-// Rank Match (unchanged preview only)
 document.getElementById("printRankMatchBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -218,7 +261,6 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   document.getElementById("downloadBtn").classList.remove("hidden");
 });
 
-// Download (unchanged)
 document.getElementById("downloadBtn").addEventListener("click", () => {
   const outputText = document.getElementById("output").innerText;
   const blob = new Blob([outputText], { type: "text/plain" });
@@ -244,7 +286,7 @@ notepad /p path\\to\\${filename}`);
 });
 
 // ===========================================================
-// URL param auto-fill (unchanged)
+// URL params (unchanged)
 // ===========================================================
 function getParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
