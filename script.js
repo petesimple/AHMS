@@ -1,99 +1,96 @@
 // ===========================================================
 // AHMS Client Script (drop-in)
-// Epson RAW (9100) printing with ASCII table borders
+// RAW receipt-safe formatting to Epson via Node server
 // ===========================================================
 
-// 🔧 Point this at your Mac running the Node print server:
-const PRINT_SERVER_URL = "http://192.168.1.2:3000/print";
+// 🔧 Your Node print server endpoint:
+const PRINT_SERVER_URL = "http://192.168.1.2:3000/print"; // keep /print route
 
-// ===========================================================
-// Fixed-width helpers (48 columns total on 80mm paper)
-// Table layout: | Player(18) | 7 × Game(3) |
-// Line length = sum(widths) + 9 borders = 48
-// ===========================================================
+// ---- Fixed-width receipt helpers (48-col default) ----
 const RECEIPT_WIDTH = 48;
-const COLS = [18, 3, 3, 3, 3, 3, 3, 3]; // Player + 1..7
 
-function padLeft(s, w) {
-  s = String(s ?? "");
-  return s.length >= w ? s.slice(0, w) : " ".repeat(w - s.length) + s;
+function padRight(str = "", len = RECEIPT_WIDTH) {
+  const s = String(str);
+  return s.length >= len ? s.slice(0, len) : s + " ".repeat(len - s.length);
 }
-function padRight(s, w) {
-  s = String(s ?? "");
-  return s.length >= w ? s.slice(0, w) : s + " ".repeat(w - s.length);
+function padLeft(str = "", len = RECEIPT_WIDTH) {
+  const s = String(str);
+  return s.length >= len ? s.slice(0, len) : " ".repeat(len - s.length) + s;
 }
-function padCenter(s, w) {
-  s = String(s ?? "").slice(0, w);
-  const space = Math.max(0, w - s.length);
+function center(str = "", len = RECEIPT_WIDTH) {
+  const s = String(str).slice(0, len);
+  const space = Math.max(0, len - s.length);
   const left = Math.floor(space / 2);
   const right = space - left;
   return " ".repeat(left) + s + " ".repeat(right);
 }
-function centerLine(s) {
-  return padCenter(s, RECEIPT_WIDTH);
+
+// 48-col split: Player(18) | 7 game cells @4 each (28) | fits ≤ 48
+const PLAYER_COL = 18;
+const GAME_COL = 4;
+const GAME_COUNT = 7;
+
+function makeGameHeader() {
+  const gameNums = Array.from({ length: GAME_COUNT }, (_, i) =>
+    padLeft(String(i + 1), GAME_COL)
+  ).join("");
+  return padRight("Player", PLAYER_COL) + gameNums;
 }
 
-// +----+---+---+... line
-function borderLine() {
-  let out = "+";
-  for (const w of COLS) out += "-".repeat(w) + "+";
-  return out;
+function makePlayerRow(name = "") {
+  const clean = (name || "").trim();
+  const cells = Array.from({ length: GAME_COUNT }, () => padLeft("[  ]", GAME_COL)).join("");
+  return padRight(clean, PLAYER_COL) + cells;
 }
 
-// | cell | cell | ... line
-function rowLine(cells, align = "left") {
-  let out = "|";
-  for (let i = 0; i < COLS.length; i++) {
-    const w = COLS[i];
-    const txt = cells[i] ?? "";
-    const padded =
-      align === "center" ? padCenter(txt, w)
-      : align === "right"  ? padLeft(txt, w)
-      : padRight(txt, w);
-    out += padded + "|";
-  }
-  return out;
+function makeDivider(char = "-") {
+  return char.repeat(RECEIPT_WIDTH);
 }
 
-// underline inside first cell
-function underlineCell(len) {
-  const lineLen = Math.max(0, len - 4); // 2-space margins
-  return "  " + "_".repeat(lineLen) + "  ";
-}
-
-// ===========================================================
-// Build receipt text that matches the screenshot
-// ===========================================================
+// Build a clean, fixed-width receipt independent of the HTML table
 function buildReceiptLines() {
-  const matchNum = document.getElementById("matchNum").value || "_____";
-  const tableNum = document.getElementById("tableNum").value || "______";
-  const refName  = document.getElementById("refName").value  || "____________";
+  const matchNum = document.getElementById("matchNum").value || "";
+  const tableNum = document.getElementById("tableNum").value || "";
+  const refName  = document.getElementById("refName").value || "";
+  const playerA  = document.getElementById("playerA").value || "";
+  const playerB  = document.getElementById("playerB").value || "";
 
   const lines = [];
-  lines.push(centerLine(`AIRHOCKEY MATCH SHEET - Match ${matchNum}`));
-  lines.push(""); // spacer
-  lines.push(padRight(`Table #: ${tableNum}   |   Ref: ${refName}`, RECEIPT_WIDTH));
-  lines.push(""); // spacer before table
-
-  // Table header + two rows
-  lines.push(borderLine());
-  lines.push(rowLine(["Player", "1", "2", "3", "4", "5", "6", "7"], "center"));
-  lines.push(borderLine());
-  lines.push(rowLine([underlineCell(COLS[0]), "", "", "", "", "", "", ""], "left"));
-  lines.push(borderLine());
-  lines.push(rowLine([underlineCell(COLS[0]), "", "", "", "", "", "", ""], "left"));
-  lines.push(borderLine());
-
-  // tail for clean cut
+  lines.push(center("AIRHOCKEY MATCH SHEET", RECEIPT_WIDTH));
+  lines.push(center(`Match ${matchNum}`, RECEIPT_WIDTH));
+  lines.push(makeDivider());
+  lines.push(padRight(`Table: ${tableNum}`));
+  lines.push(padRight(`Ref:   ${refName}`));
+  lines.push(makeDivider());
+  lines.push(makeGameHeader());
+  lines.push(makeDivider());
+  lines.push(makePlayerRow(playerA));
+  lines.push(makePlayerRow(playerB));
+  lines.push(makeDivider());
+  lines.push("Notes:");
+  lines.push("");
+  lines.push("");
   lines.push("");
   lines.push("");
 
   return { title: `AIRHOCKEY MATCH SHEET - Match ${matchNum}`.trim(), lines };
 }
 
-// ===========================================================
-// Send JSON to Node print server (which sends RAW 9100)
-// ===========================================================
+// Kept for preview/table rendering on the page (unused by print)
+function buildPrintPayloadRaw() {
+  const text = document.getElementById("output").innerText
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const lines = text.split("\n");
+  const matchNum = document.getElementById("matchNum").value || "";
+  return {
+    title: `AIRHOCKEY MATCH SHEET - Match ${matchNum}`.trim(),
+    lines
+  };
+}
+
+// Send JSON to Node print server (/print → RAW 9100 downstream)
 async function sendToPrinterRAW(payload) {
   try {
     const res = await fetch(PRINT_SERVER_URL, {
@@ -112,7 +109,8 @@ async function sendToPrinterRAW(payload) {
 }
 
 // ===========================================================
-// Form submission: HTML preview (unchanged)
+// Form submission: build HTML preview of the match sheet
+// (unchanged visual preview for the page)
 // ===========================================================
 document.getElementById("matchForm").addEventListener("submit", function(e) {
   e.preventDefault();
@@ -129,8 +127,8 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
     <p><strong>Table #:</strong> ${tableNum || "_______"} &nbsp; | &nbsp; <strong>Ref:</strong> ${refName || "____________"}</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>${playerA || "<span style='display:inline-block;width:85%;'>&nbsp;</span><hr/>"}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>${playerB || "<span style='display:inline-block;width:85%;'>&nbsp;</span><hr/>"}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
 
@@ -141,17 +139,21 @@ document.getElementById("matchForm").addEventListener("submit", function(e) {
 });
 
 // ===========================================================
-// Print / Browser print / Blank / Rank Match / Download
+// Print buttons
 // ===========================================================
+
+// ✅ Print uses the fixed-width receipt lines from your snippet
 document.getElementById("printBtn").addEventListener("click", () => {
-  const payload = buildReceiptLines(); // ASCII-border version
+  const payload = buildReceiptLines(); // receipt-safe text
   sendToPrinterRAW(payload);
 });
 
+// Browser print (unchanged)
 document.getElementById("printBrowserBtn").addEventListener("click", () => {
   window.print();
 });
 
+// Blank sheet (unchanged preview)
 document.getElementById("printBlankBtn").addEventListener("click", () => {
   const output = document.getElementById("output");
   output.innerHTML = `
@@ -159,8 +161,8 @@ document.getElementById("printBlankBtn").addEventListener("click", () => {
     <p><strong>Table #:</strong> ______ &nbsp; | &nbsp; <strong>Ref:</strong> ____________</p>
     <table>
       <tr><th>Player</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
-      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr><td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>_______________________</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     </table>
   `;
   output.classList.remove("hidden");
