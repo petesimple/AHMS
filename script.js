@@ -5,7 +5,7 @@
 // ===========================================================
 
 // 🔧 Your Node print server base:
-const PRINT_SERVER_URL = "http://192.168.1.2:3000/print-image";
+const PRINT_SERVER_URL = "http://192.168.1.2:3000/";
 
 // ============ Canvas drawing (matches the card layout) ============
 function drawMatchCardCanvas({ matchNum, tableNum, refName }) {
