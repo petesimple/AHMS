@@ -18,7 +18,7 @@
    Set PRINT_SERVER_URL below to your bridge machine IP/port.
 =========================================================== */
 
-const PRINT_SERVER_URL = "http://192.168.1.66:5055"; // <- change to your bridge IP:port
+const PRINT_SERVER_URL = "https://192.168.1.66:5056";
 
 // Optional: set to true to also send a text fallback if image printing fails
 const ENABLE_TEXT_FALLBACK = false;
