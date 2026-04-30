@@ -12,10 +12,7 @@
 // If AHMS is served from the Pi, this auto points to the same Pi on port 3000.
 // Example: AHMS opened at http://192.168.1.181:8080
 // Bridge becomes http://192.168.1.181:3000
-const PRINT_SERVER_URL =
-  window.location.hostname && window.location.hostname !== "localhost"
-    ? `${window.location.protocol}//${window.location.hostname}:3000`
-    : "http://192.168.1.181:3000";
+const PRINT_SERVER_URL = "http://192.168.1.181:3000";
 
 // ============ Utility ============
 function $(id){ return document.getElementById(id); }
