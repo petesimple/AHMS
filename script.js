@@ -1,8 +1,7 @@
 /* ===========================================================
-   AHMS script.js (drop-in)
-   ESC/POS version
+   AHMS script.js
+   ESC/POS version with safer startup and diagnostics
 
-   Browser app does NOT talk directly to the Epson.
    Browser app sends structured JSON to Raspberry Pi bridge:
 
      POST http://<PI_IP>:3000/print-match
@@ -10,7 +9,13 @@
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
 =========================================================== */
 
-const PRINT_SERVER_URL = "http://192.168.1.181:3000";
+// If AHMS is served from the Pi, this auto points to the same Pi on port 3000.
+// Example: AHMS opened at http://192.168.1.181:8080
+// Bridge becomes http://192.168.1.181:3000
+const PRINT_SERVER_URL =
+  window.location.hostname && window.location.hostname !== "localhost"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "http://192.168.1.181:3000";
 
 // ============ Utility ============
 function $(id){ return document.getElementById(id); }
@@ -31,8 +36,13 @@ function getParam(name){
 async function fetchWithTimeout(url, options = {}, ms = 8000){
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
+
   try{
-    const res = await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      mode: "cors"
+    });
     return res;
   } finally {
     clearTimeout(t);
@@ -41,6 +51,9 @@ async function fetchWithTimeout(url, options = {}, ms = 8000){
 
 // ============ ESC/POS bridge send ============
 async function sendMatchToEscposBridge(payload){
+  console.log("Sending to print bridge:", `${PRINT_SERVER_URL}/print-match`);
+  console.log("Payload:", payload);
+
   const res = await fetchWithTimeout(`${PRINT_SERVER_URL}/print-match`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -54,6 +67,8 @@ async function sendMatchToEscposBridge(payload){
     data = JSON.parse(text);
   } catch {}
 
+  console.log("Print bridge response:", res.status, text);
+
   if(!res.ok){
     throw new Error((data && data.error) ? data.error : (text || `Printer error (${res.status})`));
   }
@@ -65,6 +80,21 @@ async function sendMatchToEscposBridge(payload){
   return true;
 }
 
+// ============ Diagnostic bridge test ============
+async function testBridge(){
+  const res = await fetchWithTimeout(`${PRINT_SERVER_URL}/`, {
+    method: "GET"
+  }, 5000);
+
+  const text = await res.text();
+
+  if(!res.ok){
+    throw new Error(`Bridge test failed: ${res.status} ${text}`);
+  }
+
+  return text;
+}
+
 // ============ Preview HTML builders ============
 function showAllButtons(){
   $("printBtn")?.classList.remove("hidden");
@@ -74,6 +104,12 @@ function showAllButtons(){
 
 function setOutput(html){
   const output = $("output");
+
+  if(!output){
+    alert("Missing #output element in HTML.");
+    return;
+  }
+
   output.innerHTML = html;
   output.classList.remove("hidden");
   showAllButtons();
@@ -206,10 +242,8 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
   `;
 }
 
-// Track current mode so the Print button knows what to send
-let CURRENT_MODE = "match"; // "match" | "blank" | "rank"
+let CURRENT_MODE = "match";
 
-// ============ Payload builder ============
 function getCurrentPrintPayload(){
   const matchNum = $("matchNum")?.value || "";
   const tableNum = $("tableNum")?.value || "";
@@ -249,82 +283,90 @@ function getCurrentPrintPayload(){
   };
 }
 
-// ============ Events ============
+function initAHMS(){
+  console.log("AHMS script loaded.");
+  console.log("Print bridge URL:", PRINT_SERVER_URL);
 
-// Generate Sheet
-$("matchForm")?.addEventListener("submit", (e) => {
-  e.preventDefault();
-  CURRENT_MODE = "match";
+  const matchForm = $("matchForm");
+  const printBtn = $("printBtn");
+  const printBrowserBtn = $("printBrowserBtn");
+  const printBlankBtn = $("printBlankBtn");
+  const printRankMatchBtn = $("printRankMatchBtn");
+  const downloadBtn = $("downloadBtn");
 
-  const matchNum = $("matchNum")?.value || "";
-  const tableNum = $("tableNum")?.value || "";
-  const refName  = $("refName")?.value  || "";
-  const playerA  = $("playerA")?.value  || "";
-  const playerB  = $("playerB")?.value  || "";
+  if(!matchForm) console.warn("Missing #matchForm");
+  if(!printBtn) console.warn("Missing #printBtn");
+  if(!printBrowserBtn) console.warn("Missing #printBrowserBtn");
+  if(!printBlankBtn) console.warn("Missing #printBlankBtn");
+  if(!printRankMatchBtn) console.warn("Missing #printRankMatchBtn");
+  if(!downloadBtn) console.warn("Missing #downloadBtn");
 
-  setOutput(buildMatchPreviewHTML({
-    matchNum,
-    tableNum,
-    refName,
-    playerA,
-    playerB
-  }));
-});
+  matchForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    CURRENT_MODE = "match";
 
-// Print to Epson via Raspberry Pi ESC/POS bridge
-$("printBtn")?.addEventListener("click", async () => {
-  try{
-    const payload = getCurrentPrintPayload();
+    const matchNum = $("matchNum")?.value || "";
+    const tableNum = $("tableNum")?.value || "";
+    const refName  = $("refName")?.value  || "";
+    const playerA  = $("playerA")?.value  || "";
+    const playerB  = $("playerB")?.value  || "";
 
-    await sendMatchToEscposBridge(payload);
+    setOutput(buildMatchPreviewHTML({
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB
+    }));
+  });
 
-    alert("🖨️ Printed via ESC/POS!");
-  }catch(err){
-    console.error(err);
+  printBtn?.addEventListener("click", async () => {
+    try{
+      const payload = getCurrentPrintPayload();
+
+      await sendMatchToEscposBridge(payload);
+
+      alert("🖨️ Printed via ESC/POS!");
+    }catch(err){
+      console.error("AHMS print failed:", err);
+
+      alert(
+        "⚠️ Could not print via ESC/POS bridge.\n\n" +
+        "Bridge URL:\n" +
+        PRINT_SERVER_URL + "\n\n" +
+        "Error:\n" +
+        (err?.message || String(err))
+      );
+    }
+  });
+
+  printBrowserBtn?.addEventListener("click", () => window.print());
+
+  printBlankBtn?.addEventListener("click", () => {
+    CURRENT_MODE = "blank";
+    setOutput(buildBlankPreviewHTML());
+  });
+
+  printRankMatchBtn?.addEventListener("click", () => {
+    CURRENT_MODE = "rank";
+    setOutput(buildRankPreviewHTML());
+  });
+
+  downloadBtn?.addEventListener("click", () => {
+    const outputText = $("output")?.innerText || "";
+    const blob = new Blob([outputText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const matchNum = $("matchNum")?.value || "";
+    const filename = `Match_${matchNum || "Blank"}_${Date.now()}.txt`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
 
     alert(
-      "⚠️ Could not print via ESC/POS bridge.\n\n" +
-      "Check:\n" +
-      "1. Raspberry Pi bridge is running\n" +
-      "2. PRINT_SERVER_URL points to the Pi\n" +
-      "3. Epson T88 IP is correct in server.js\n" +
-      "4. Pi and printer are on the same network\n\n" +
-      (err?.message || String(err))
-    );
-  }
-});
-
-// Print to Browser
-$("printBrowserBtn")?.addEventListener("click", () => window.print());
-
-// Blank card
-$("printBlankBtn")?.addEventListener("click", () => {
-  CURRENT_MODE = "blank";
-  setOutput(buildBlankPreviewHTML());
-});
-
-// Rank match
-$("printRankMatchBtn")?.addEventListener("click", () => {
-  CURRENT_MODE = "rank";
-  setOutput(buildRankPreviewHTML());
-});
-
-// Download text version
-$("downloadBtn")?.addEventListener("click", () => {
-  const outputText = $("output")?.innerText || "";
-  const blob = new Blob([outputText], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-
-  const matchNum = $("matchNum")?.value || "";
-  const filename = `Match_${matchNum || "Blank"}_${Date.now()}.txt`;
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-
-  alert(
 `✅ Match card downloaded as "${filename}"!
 
 🖨️ Terminal printing examples:
@@ -333,26 +375,32 @@ lp path/to/${filename}
 
 Windows CMD:
 notepad /p path\\to\\${filename}`
-  );
-});
+    );
+  });
 
-// URL params bootstrap
-window.addEventListener("load", () => {
-  const matchNum = getParam("match");
-  const tableNum = getParam("table");
-  const refName  = getParam("ref");
-  const playerA  = getParam("playerA");
-  const playerB  = getParam("playerB");
+  window.addEventListener("load", () => {
+    const matchNum = getParam("match");
+    const tableNum = getParam("table");
+    const refName  = getParam("ref");
+    const playerA  = getParam("playerA");
+    const playerB  = getParam("playerB");
 
-  if(matchNum || playerA || playerB){
-    if($("matchNum")) $("matchNum").value = matchNum;
-    if($("tableNum")) $("tableNum").value = tableNum;
-    if($("refName"))  $("refName").value  = refName;
-    if($("playerA"))  $("playerA").value  = playerA;
-    if($("playerB"))  $("playerB").value  = playerB;
+    if(matchNum || playerA || playerB){
+      if($("matchNum")) $("matchNum").value = matchNum;
+      if($("tableNum")) $("tableNum").value = tableNum;
+      if($("refName"))  $("refName").value  = refName;
+      if($("playerA"))  $("playerA").value  = playerA;
+      if($("playerB"))  $("playerB").value  = playerB;
 
-    if(matchNum && tableNum && refName && playerA && playerB){
-      $("matchForm")?.dispatchEvent(new Event("submit"));
+      if(matchNum && tableNum && refName && playerA && playerB){
+        matchForm?.dispatchEvent(new Event("submit"));
+      }
     }
-  }
-});
+  });
+
+  testBridge()
+    .then((msg) => console.log("Bridge test OK:", msg))
+    .catch((err) => console.warn("Bridge test failed:", err));
+}
+
+document.addEventListener("DOMContentLoaded", initAHMS);
