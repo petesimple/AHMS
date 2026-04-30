@@ -10,7 +10,7 @@
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
 =========================================================== */
 
-const PRINT_SERVER_URL = "http://192.168.1.66:3000";
+const PRINT_SERVER_URL = "http://192.168.1.181:3000";
 
 // ============ Utility ============
 function $(id){ return document.getElementById(id); }
