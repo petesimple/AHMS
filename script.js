@@ -1,18 +1,27 @@
 /* ===========================================================
    AHMS script.js
-   ESC/POS version with safer startup and diagnostics
+   ESC/POS version with safer startup, diagnostics,
+   and scoreboard QR code support
 
    Browser app sends structured JSON to Raspberry Pi bridge:
 
      POST http://<PI_IP>:3000/print-match
 
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
+
+   New:
+   AHMS now builds a QR code that points to the live
+   airhockey-score-system scoreboard so a ref or player can
+   scan the printed match card and score the match by phone.
 =========================================================== */
 
 // If AHMS is served from the Pi, this auto points to the same Pi on port 3000.
 // Example: AHMS opened at http://192.168.1.181:8080
 // Bridge becomes http://192.168.1.181:3000
 const PRINT_SERVER_URL = "http://192.168.1.181:3000";
+
+const SCOREBOARD_BASE_URL = "https://petesimple.github.io/airhockey-score-system/";
+const QR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js";
 
 // ============ Utility ============
 function $(id){ return document.getElementById(id); }
@@ -43,6 +52,113 @@ async function fetchWithTimeout(url, options = {}, ms = 8000){
     return res;
   } finally {
     clearTimeout(t);
+  }
+}
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    if(window.QRCode){
+      resolve();
+      return;
+    }
+
+    const existing = document.querySelector(`script[src="${src}"]`);
+
+    if(existing){
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error(`Could not load ${src}`)));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Could not load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+function buildScoreboardUrl({ matchNum, tableNum, refName, playerA, playerB, matchId }){
+  const params = new URLSearchParams();
+
+  params.set("p1", playerA || "");
+  params.set("p2", playerB || "");
+  params.set("match", matchNum || "2");
+
+  if(matchId) params.set("matchid", matchId);
+  if(tableNum) params.set("table", tableNum);
+  if(refName) params.set("ref", refName);
+
+  return `${SCOREBOARD_BASE_URL}?${params.toString()}`;
+}
+
+function getMatchId(){
+  const fromUrl = getParam("matchid");
+
+  if(fromUrl){
+    return fromUrl;
+  }
+
+  const matchNum = $("matchNum")?.value || "";
+  const tableNum = $("tableNum")?.value || "";
+  const playerA = $("playerA")?.value || "";
+  const playerB = $("playerB")?.value || "";
+
+  const seed = `${matchNum}-${tableNum}-${playerA}-${playerB}`.trim();
+
+  if(!seed){
+    return "";
+  }
+
+  const randomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const yyyymmdd = new Date().toISOString().slice(0, 10);
+
+  return `ahms${randomId}-${yyyymmdd}`;
+}
+
+async function renderScoreboardQr(scoreboardUrl){
+  const canvas = $("scoreboardQr");
+  const textEl = $("scoreboardQrText");
+
+  if(textEl){
+    textEl.textContent = scoreboardUrl || "";
+  }
+
+  if(!canvas || !scoreboardUrl){
+    return;
+  }
+
+  try{
+    await loadScriptOnce(QR_SCRIPT_URL);
+
+    if(!window.QRCode){
+      throw new Error("QRCode library unavailable.");
+    }
+
+    QRCode.toCanvas(canvas, scoreboardUrl, {
+      width: 150,
+      margin: 1,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      }
+    }, function(error){
+      if(error){
+        console.error("QR render failed:", error);
+      }
+    });
+  }catch(err){
+    console.warn("Could not render QR code:", err);
+
+    const holder = $("scoreboardQrHolder");
+
+    if(holder){
+      holder.innerHTML = `
+        <p><strong>Scan to Score Match:</strong></p>
+        <p style="font-size:12px; word-break:break-all;">${escapeHtml(scoreboardUrl)}</p>
+      `;
+    }
   }
 }
 
@@ -99,7 +215,7 @@ function showAllButtons(){
   $("downloadBtn")?.classList.remove("hidden");
 }
 
-function setOutput(html){
+function setOutput(html, scoreboardUrl = ""){
   const output = $("output");
 
   if(!output){
@@ -110,9 +226,38 @@ function setOutput(html){
   output.innerHTML = html;
   output.classList.remove("hidden");
   showAllButtons();
+
+  if(scoreboardUrl){
+    renderScoreboardQr(scoreboardUrl);
+  }
 }
 
-function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB }){
+function buildScoreboardQrHTML(scoreboardUrl){
+  if(!scoreboardUrl){
+    return "";
+  }
+
+  return `
+    <div id="scoreboardQrHolder" style="text-align:center; margin: 12px 0;">
+      <p style="margin-bottom:6px;"><strong>Scan to Score Match</strong></p>
+      <canvas id="scoreboardQr" width="150" height="150" style="background:#fff; padding:4px;"></canvas>
+      <p id="scoreboardQrText" style="font-size:10px; line-height:1.2; word-break:break-all; margin-top:6px;">
+        ${escapeHtml(scoreboardUrl)}
+      </p>
+    </div>
+  `;
+}
+
+function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, matchId }){
+  const scoreboardUrl = buildScoreboardUrl({
+    matchNum,
+    tableNum,
+    refName,
+    playerA,
+    playerB,
+    matchId
+  });
+
   return `
     <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
     <p>
@@ -121,6 +266,12 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB }
       <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
     </p>
 
+    ${matchId ? `
+      <p>
+        <strong>Match ID:</strong> ${escapeHtml(matchId)}
+      </p>
+    ` : ""}
+
     ${playerA || playerB ? `
       <p>
         <strong>Player A:</strong> ${escapeHtml(playerA || "____________________")}
@@ -128,6 +279,8 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB }
         <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
       </p>
     ` : ""}
+
+    ${buildScoreboardQrHTML(scoreboardUrl)}
 
     <table>
       <tr>
@@ -240,6 +393,7 @@ Set 7: [_____] [_____] [_____] [_____] [_____] [_____] [_____]
 }
 
 let CURRENT_MODE = "match";
+let CURRENT_MATCH_ID = "";
 
 function getCurrentPrintPayload(){
   const matchNum = $("matchNum")?.value || "";
@@ -248,6 +402,19 @@ function getCurrentPrintPayload(){
   const playerA  = $("playerA")?.value  || "";
   const playerB  = $("playerB")?.value  || "";
 
+  if(!CURRENT_MATCH_ID){
+    CURRENT_MATCH_ID = getMatchId();
+  }
+
+  const scoreboardUrl = buildScoreboardUrl({
+    matchNum,
+    tableNum,
+    refName,
+    playerA,
+    playerB,
+    matchId: CURRENT_MATCH_ID
+  });
+
   if(CURRENT_MODE === "rank"){
     return {
       mode: "rank",
@@ -255,7 +422,9 @@ function getCurrentPrintPayload(){
       tableNum,
       refName,
       playerA,
-      playerB
+      playerB,
+      matchId: CURRENT_MATCH_ID,
+      scoreboardUrl
     };
   }
 
@@ -266,7 +435,9 @@ function getCurrentPrintPayload(){
       tableNum: "",
       refName: "",
       playerA: "",
-      playerB: ""
+      playerB: "",
+      matchId: "",
+      scoreboardUrl: ""
     };
   }
 
@@ -276,7 +447,9 @@ function getCurrentPrintPayload(){
     tableNum,
     refName,
     playerA,
-    playerB
+    playerB,
+    matchId: CURRENT_MATCH_ID,
+    scoreboardUrl
   };
 }
 
@@ -308,13 +481,25 @@ function initAHMS(){
     const playerA  = $("playerA")?.value  || "";
     const playerB  = $("playerB")?.value  || "";
 
+    CURRENT_MATCH_ID = getParam("matchid") || CURRENT_MATCH_ID || getMatchId();
+
+    const scoreboardUrl = buildScoreboardUrl({
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB,
+      matchId: CURRENT_MATCH_ID
+    });
+
     setOutput(buildMatchPreviewHTML({
       matchNum,
       tableNum,
       refName,
       playerA,
-      playerB
-    }));
+      playerB,
+      matchId: CURRENT_MATCH_ID
+    }), scoreboardUrl);
   });
 
   printBtn?.addEventListener("click", async () => {
@@ -341,6 +526,7 @@ function initAHMS(){
 
   printBlankBtn?.addEventListener("click", () => {
     CURRENT_MODE = "blank";
+    CURRENT_MATCH_ID = "";
     setOutput(buildBlankPreviewHTML());
   });
 
@@ -351,7 +537,13 @@ function initAHMS(){
 
   downloadBtn?.addEventListener("click", () => {
     const outputText = $("output")?.innerText || "";
-    const blob = new Blob([outputText], { type: "text/plain" });
+    const payload = getCurrentPrintPayload();
+
+    const textWithScoreboard = payload.scoreboardUrl
+      ? `${outputText}\n\nScan to Score Match:\n${payload.scoreboardUrl}\n`
+      : outputText;
+
+    const blob = new Blob([textWithScoreboard], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
 
     const matchNum = $("matchNum")?.value || "";
@@ -381,6 +573,11 @@ notepad /p path\\to\\${filename}`
     const refName  = getParam("ref");
     const playerA  = getParam("playerA");
     const playerB  = getParam("playerB");
+    const matchId  = getParam("matchid");
+
+    if(matchId){
+      CURRENT_MATCH_ID = matchId;
+    }
 
     if(matchNum || playerA || playerB){
       if($("matchNum")) $("matchNum").value = matchNum;
