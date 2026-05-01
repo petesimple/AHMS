@@ -8,10 +8,9 @@
    Normal match sheets and blank cards print as landscape raster images.
    Rank matches print as regular ESC/POS text.
 
-   New:
+   QR support:
    If scoreboardUrl is included in the print payload, the match sheet
-   prints a QR code so a player or ref can scan the card and score
-   the match from a phone.
+   prints a QR code in the upper right of the landscape card.
 =========================================================== */
 
 const fs = require("fs");
@@ -93,15 +92,13 @@ function printWithEscpos(jobFn) {
 async function makeQrDataUrl(scoreboardUrl) {
   const clean = String(scoreboardUrl || "").trim();
 
-  if (!clean) {
-    return "";
-  }
+  if (!clean) return "";
 
   try {
     return await QRCode.toDataURL(clean, {
       errorCorrectionLevel: "M",
       margin: 1,
-      width: 138,
+      width: 132,
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -123,26 +120,18 @@ async function makeMatchSheetSvg(data, options = {}) {
   const playerB = xmlEscape(isBlank ? "" : (data.playerB || ""));
   const matchId = xmlEscape(isBlank ? "" : (data.matchId || ""));
   const scoreboardUrl = isBlank ? "" : String(data.scoreboardUrl || "").trim();
-  const scoreboardUrlEscaped = xmlEscape(scoreboardUrl);
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
 
   const qrBlock = qrDataUrl ? `
-  <!-- Scoreboard QR -->
-  <rect x="570" y="72" width="150" height="118" fill="white" stroke="black" stroke-width="2"/>
-  <text x="645" y="94" class="qrTitle">SCAN TO SCORE</text>
-  <image href="${qrDataUrl}" x="591" y="100" width="108" height="108"/>
+    <rect x="570" y="24" width="150" height="150" fill="white" stroke="black" stroke-width="2"/>
+    <text x="645" y="44" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="579" y="52" width="132" height="132"/>
   ` : "";
 
   const matchIdBlock = matchId ? `
-  <text x="390" y="102" class="bold">ID:</text>
-  <text x="430" y="102" class="smallText">${matchId}</text>
-  ` : "";
-
-  const scoreUrlBlock = scoreboardUrl ? `
-  <text x="570" y="202" class="tiny">Scorer:</text>
-  <text x="570" y="218" class="tiny">${scoreboardUrlEscaped.slice(0, 38)}</text>
-  ${scoreboardUrlEscaped.length > 38 ? `<text x="570" y="232" class="tiny">${scoreboardUrlEscaped.slice(38, 76)}</text>` : ""}
+    <text x="410" y="102" class="bold">Match ID:</text>
+    <text x="520" y="102" class="smallText">${matchId}</text>
   ` : "";
 
   return `
@@ -150,14 +139,13 @@ async function makeMatchSheetSvg(data, options = {}) {
   <rect width="760" height="576" fill="white"/>
 
   <style>
-    .title { font-family: Arial, Helvetica, sans-serif; font-size: 32px; font-weight: 700; }
+    .title { font-family: Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 700; }
     .text { font-family: Arial, Helvetica, sans-serif; font-size: 22px; }
-    .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
+    .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
     .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; dominant-baseline: middle; }
-    .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; text-anchor: middle; }
-    .tiny { font-family: Arial, Helvetica, sans-serif; font-size: 8px; }
+    .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
     .line { stroke: black; stroke-width: 2; fill: none; }
     .thin { stroke: black; stroke-width: 1.5; fill: none; }
   </style>
@@ -179,7 +167,6 @@ async function makeMatchSheetSvg(data, options = {}) {
   <text x="135" y="174" class="text">${playerB}</text>
 
   ${qrBlock}
-  ${scoreUrlBlock}
 
   <!-- Main score table -->
   <rect x="32" y="210" width="696" height="190" class="line"/>
