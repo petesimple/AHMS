@@ -2,15 +2,16 @@
    AHMS Local App + ESC/POS Print Server
    Raspberry Pi 400 -> Epson TM-T88 Network Printer
 
-   What this does:
-   1. Serves your AHMS app from /public
-   2. Receives JSON at POST /print-match
-   3. Prints normal and blank match sheets as raster images
-   4. Prints rank matches as text ESC/POS
-   5. Adds a QR code to match sheets when scoreboardUrl is present
+   Browser AHMS app sends JSON to:
+   POST http://PI_IP:3000/print-match
 
-   Required:
-     npm install qrcode
+   Normal match sheets and blank cards print as landscape raster images.
+   Rank matches print as regular ESC/POS text.
+
+   New:
+   If scoreboardUrl is included in the print payload, the match sheet
+   prints a QR code so a player or ref can scan the card and score
+   the match from a phone.
 =========================================================== */
 
 const fs = require("fs");
@@ -100,7 +101,7 @@ async function makeQrDataUrl(scoreboardUrl) {
     return await QRCode.toDataURL(clean, {
       errorCorrectionLevel: "M",
       margin: 1,
-      width: 150,
+      width: 138,
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -128,101 +129,96 @@ async function makeMatchSheetSvg(data, options = {}) {
 
   const qrBlock = qrDataUrl ? `
   <!-- Scoreboard QR -->
-  <rect x="360" y="430" width="160" height="210" fill="white" stroke="black" stroke-width="2"/>
-  <text x="440" y="456" class="qrTitle">SCAN TO SCORE</text>
-  <image href="${qrDataUrl}" x="365" y="468" width="150" height="150"/>
-  <text x="440" y="636" class="qrSmall">Open scorer on phone</text>
-  ` : `
-  <!-- No QR available -->
-  <rect x="360" y="430" width="160" height="110" fill="white" stroke="black" stroke-width="2"/>
-  <text x="440" y="466" class="qrTitle">SCORE QR</text>
-  <text x="440" y="498" class="qrSmall">No URL provided</text>
-  `;
+  <rect x="570" y="72" width="150" height="118" fill="white" stroke="black" stroke-width="2"/>
+  <text x="645" y="94" class="qrTitle">SCAN TO SCORE</text>
+  <image href="${qrDataUrl}" x="591" y="100" width="108" height="108"/>
+  ` : "";
 
-  const urlBlock = scoreboardUrl ? `
-  <text x="32" y="690" class="tiny">Score URL:</text>
-  <text x="32" y="710" class="tiny">${scoreboardUrlEscaped.slice(0, 92)}</text>
-  ${scoreboardUrlEscaped.length > 92 ? `<text x="32" y="728" class="tiny">${scoreboardUrlEscaped.slice(92, 184)}</text>` : ""}
+  const matchIdBlock = matchId ? `
+  <text x="390" y="102" class="bold">ID:</text>
+  <text x="430" y="102" class="smallText">${matchId}</text>
+  ` : "";
+
+  const scoreUrlBlock = scoreboardUrl ? `
+  <text x="570" y="202" class="tiny">Scorer:</text>
+  <text x="570" y="218" class="tiny">${scoreboardUrlEscaped.slice(0, 38)}</text>
+  ${scoreboardUrlEscaped.length > 38 ? `<text x="570" y="232" class="tiny">${scoreboardUrlEscaped.slice(38, 76)}</text>` : ""}
   ` : "";
 
   return `
-<svg width="576" height="760" viewBox="0 0 576 760" xmlns="http://www.w3.org/2000/svg">
-  <rect width="576" height="760" fill="white"/>
+<svg width="760" height="576" viewBox="0 0 760 576" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="576" fill="white"/>
 
   <style>
-    .title { font-family: Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 700; }
+    .title { font-family: Arial, Helvetica, sans-serif; font-size: 32px; font-weight: 700; }
     .text { font-family: Arial, Helvetica, sans-serif; font-size: 22px; }
+    .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
     .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; dominant-baseline: middle; }
-    .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; text-anchor: middle; }
-    .qrSmall { font-family: Arial, Helvetica, sans-serif; font-size: 12px; text-anchor: middle; }
-    .tiny { font-family: Arial, Helvetica, sans-serif; font-size: 10px; }
+    .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; text-anchor: middle; }
+    .tiny { font-family: Arial, Helvetica, sans-serif; font-size: 8px; }
     .line { stroke: black; stroke-width: 2; fill: none; }
     .thin { stroke: black; stroke-width: 1.5; fill: none; }
   </style>
 
-  <text x="28" y="58" class="title">AIRHOCKEY MATCH SHEET - Match ${matchNum}</text>
+  <text x="30" y="55" class="title">AIRHOCKEY MATCH SHEET - Match ${matchNum}</text>
 
-  <text x="32" y="108" class="bold">Table #:</text>
-  <text x="124" y="108" class="text">${tableNum}</text>
+  <text x="32" y="102" class="bold">Table #:</text>
+  <text x="125" y="102" class="text">${tableNum}</text>
 
-  <text x="190" y="108" class="bold">Ref:</text>
-  <text x="245" y="108" class="text">${refName}</text>
+  <text x="220" y="102" class="bold">Ref:</text>
+  <text x="275" y="102" class="text">${refName}</text>
 
-  <text x="32" y="152" class="bold">Player A:</text>
-  <text x="132" y="152" class="text">${playerA}</text>
+  ${matchIdBlock}
 
-  <text x="32" y="182" class="bold">Player B:</text>
-  <text x="132" y="182" class="text">${playerB}</text>
+  <text x="32" y="142" class="bold">Player A:</text>
+  <text x="135" y="142" class="text">${playerA}</text>
 
-  ${matchId ? `
-  <text x="32" y="210" class="bold">Match ID:</text>
-  <text x="132" y="210" class="text">${matchId}</text>
-  ` : ""}
-
-  <!-- Main score table -->
-  <rect x="32" y="235" width="512" height="190" class="line"/>
-
-  <!-- Horizontal dividers -->
-  <line x1="32" y1="280" x2="544" y2="280" class="line"/>
-  <line x1="32" y1="345" x2="544" y2="345" class="thin"/>
-
-  <!-- Player column divider -->
-  <line x1="286" y1="235" x2="286" y2="425" class="line"/>
-
-  <!-- Score column dividers -->
-  <line x1="323" y1="235" x2="323" y2="425" class="thin"/>
-  <line x1="360" y1="235" x2="360" y2="425" class="thin"/>
-  <line x1="397" y1="235" x2="397" y2="425" class="thin"/>
-  <line x1="434" y1="235" x2="434" y2="425" class="thin"/>
-  <line x1="471" y1="235" x2="471" y2="425" class="thin"/>
-  <line x1="508" y1="235" x2="508" y2="425" class="thin"/>
-
-  <!-- Header labels -->
-  <text x="159" y="258" class="cell">Player</text>
-  <text x="304.5" y="258" class="cell">1</text>
-  <text x="341.5" y="258" class="cell">2</text>
-  <text x="378.5" y="258" class="cell">3</text>
-  <text x="415.5" y="258" class="cell">4</text>
-  <text x="452.5" y="258" class="cell">5</text>
-  <text x="489.5" y="258" class="cell">6</text>
-  <text x="526.5" y="258" class="cell">7</text>
-
-  <!-- Player names -->
-  <text x="46" y="312" class="nameLeft">${playerA}</text>
-  <text x="46" y="380" class="nameLeft">${playerB}</text>
-
-  <!-- Notes -->
-  <text x="32" y="465" class="bold">Notes:</text>
-
-  <line x1="48" y1="515" x2="300" y2="515" class="thin"/>
-  <line x1="48" y1="565" x2="300" y2="565" class="thin"/>
-  <line x1="48" y1="615" x2="300" y2="615" class="thin"/>
+  <text x="32" y="174" class="bold">Player B:</text>
+  <text x="135" y="174" class="text">${playerB}</text>
 
   ${qrBlock}
+  ${scoreUrlBlock}
 
-  ${urlBlock}
+  <!-- Main score table -->
+  <rect x="32" y="210" width="696" height="190" class="line"/>
+
+  <!-- Horizontal dividers -->
+  <line x1="32" y1="255" x2="728" y2="255" class="line"/>
+  <line x1="32" y1="325" x2="728" y2="325" class="thin"/>
+
+  <!-- Player column divider -->
+  <line x1="330" y1="210" x2="330" y2="400" class="line"/>
+
+  <!-- Score column dividers -->
+  <line x1="387" y1="210" x2="387" y2="400" class="thin"/>
+  <line x1="444" y1="210" x2="444" y2="400" class="thin"/>
+  <line x1="501" y1="210" x2="501" y2="400" class="thin"/>
+  <line x1="558" y1="210" x2="558" y2="400" class="thin"/>
+  <line x1="615" y1="210" x2="615" y2="400" class="thin"/>
+  <line x1="672" y1="210" x2="672" y2="400" class="thin"/>
+
+  <!-- Header labels -->
+  <text x="181" y="233" class="cell">Player</text>
+  <text x="358.5" y="233" class="cell">1</text>
+  <text x="415.5" y="233" class="cell">2</text>
+  <text x="472.5" y="233" class="cell">3</text>
+  <text x="529.5" y="233" class="cell">4</text>
+  <text x="586.5" y="233" class="cell">5</text>
+  <text x="643.5" y="233" class="cell">6</text>
+  <text x="700.5" y="233" class="cell">7</text>
+
+  <!-- Player names -->
+  <text x="50" y="290" class="nameLeft">${playerA}</text>
+  <text x="50" y="362" class="nameLeft">${playerB}</text>
+
+  <!-- Notes -->
+  <text x="32" y="445" class="bold">Notes:</text>
+
+  <line x1="110" y1="445" x2="728" y2="445" class="thin"/>
+  <line x1="32" y1="490" x2="728" y2="490" class="thin"/>
+  <line x1="32" y1="535" x2="728" y2="535" class="thin"/>
 </svg>
 `;
 }
@@ -232,6 +228,9 @@ async function printMatchSheetImage(data, options = {}) {
   const tmpFile = path.join(os.tmpdir(), `ahms-match-${Date.now()}.png`);
 
   await sharp(Buffer.from(svg))
+    .rotate(90)
+    .grayscale()
+    .threshold(180)
     .png()
     .toFile(tmpFile);
 
@@ -362,6 +361,14 @@ app.get("/ping", (req, res) => {
     printerPort: PRINTER_PORT,
     time: new Date().toISOString()
   });
+});
+
+app.get("/", (req, res, next) => {
+  const indexPath = path.join(__dirname, "public", "index.html");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.send("AHMS ESC/POS bridge is running.");
 });
 
 app.listen(SERVER_PORT, "0.0.0.0", () => {
