@@ -7,12 +7,17 @@
    2. Receives JSON at POST /print-match
    3. Prints normal and blank match sheets as raster images
    4. Prints rank matches as text ESC/POS
+   5. Adds a QR code to match sheets when scoreboardUrl is present
+
+   Required:
+     npm install qrcode
 =========================================================== */
 
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const sharp = require("sharp");
+const QRCode = require("qrcode");
 
 const express = require("express");
 const cors = require("cors");
@@ -84,7 +89,30 @@ function printWithEscpos(jobFn) {
   });
 }
 
-function makeMatchSheetSvg(data, options = {}) {
+async function makeQrDataUrl(scoreboardUrl) {
+  const clean = String(scoreboardUrl || "").trim();
+
+  if (!clean) {
+    return "";
+  }
+
+  try {
+    return await QRCode.toDataURL(clean, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 150,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      }
+    });
+  } catch (err) {
+    console.warn("QR generation failed:", err);
+    return "";
+  }
+}
+
+async function makeMatchSheetSvg(data, options = {}) {
   const isBlank = !!options.blank;
 
   const matchNum = xmlEscape(isBlank ? "_____" : (data.matchNum || "_____"));
@@ -92,6 +120,30 @@ function makeMatchSheetSvg(data, options = {}) {
   const refName = xmlEscape(isBlank ? "____________" : (data.refName || "____________"));
   const playerA = xmlEscape(isBlank ? "" : (data.playerA || ""));
   const playerB = xmlEscape(isBlank ? "" : (data.playerB || ""));
+  const matchId = xmlEscape(isBlank ? "" : (data.matchId || ""));
+  const scoreboardUrl = isBlank ? "" : String(data.scoreboardUrl || "").trim();
+  const scoreboardUrlEscaped = xmlEscape(scoreboardUrl);
+
+  const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
+
+  const qrBlock = qrDataUrl ? `
+  <!-- Scoreboard QR -->
+  <rect x="360" y="430" width="160" height="210" fill="white" stroke="black" stroke-width="2"/>
+  <text x="440" y="456" class="qrTitle">SCAN TO SCORE</text>
+  <image href="${qrDataUrl}" x="365" y="468" width="150" height="150"/>
+  <text x="440" y="636" class="qrSmall">Open scorer on phone</text>
+  ` : `
+  <!-- No QR available -->
+  <rect x="360" y="430" width="160" height="110" fill="white" stroke="black" stroke-width="2"/>
+  <text x="440" y="466" class="qrTitle">SCORE QR</text>
+  <text x="440" y="498" class="qrSmall">No URL provided</text>
+  `;
+
+  const urlBlock = scoreboardUrl ? `
+  <text x="32" y="690" class="tiny">Score URL:</text>
+  <text x="32" y="710" class="tiny">${scoreboardUrlEscaped.slice(0, 92)}</text>
+  ${scoreboardUrlEscaped.length > 92 ? `<text x="32" y="728" class="tiny">${scoreboardUrlEscaped.slice(92, 184)}</text>` : ""}
+  ` : "";
 
   return `
 <svg width="576" height="760" viewBox="0 0 576 760" xmlns="http://www.w3.org/2000/svg">
@@ -103,6 +155,9 @@ function makeMatchSheetSvg(data, options = {}) {
     .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; dominant-baseline: middle; }
+    .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; text-anchor: middle; }
+    .qrSmall { font-family: Arial, Helvetica, sans-serif; font-size: 12px; text-anchor: middle; }
+    .tiny { font-family: Arial, Helvetica, sans-serif; font-size: 10px; }
     .line { stroke: black; stroke-width: 2; fill: none; }
     .thin { stroke: black; stroke-width: 1.5; fill: none; }
   </style>
@@ -121,50 +176,59 @@ function makeMatchSheetSvg(data, options = {}) {
   <text x="32" y="182" class="bold">Player B:</text>
   <text x="132" y="182" class="text">${playerB}</text>
 
+  ${matchId ? `
+  <text x="32" y="210" class="bold">Match ID:</text>
+  <text x="132" y="210" class="text">${matchId}</text>
+  ` : ""}
+
   <!-- Main score table -->
-  <rect x="32" y="220" width="512" height="190" class="line"/>
+  <rect x="32" y="235" width="512" height="190" class="line"/>
 
   <!-- Horizontal dividers -->
-  <line x1="32" y1="265" x2="544" y2="265" class="line"/>
-  <line x1="32" y1="330" x2="544" y2="330" class="thin"/>
+  <line x1="32" y1="280" x2="544" y2="280" class="line"/>
+  <line x1="32" y1="345" x2="544" y2="345" class="thin"/>
 
   <!-- Player column divider -->
-  <line x1="286" y1="220" x2="286" y2="410" class="line"/>
+  <line x1="286" y1="235" x2="286" y2="425" class="line"/>
 
   <!-- Score column dividers -->
-  <line x1="323" y1="220" x2="323" y2="410" class="thin"/>
-  <line x1="360" y1="220" x2="360" y2="410" class="thin"/>
-  <line x1="397" y1="220" x2="397" y2="410" class="thin"/>
-  <line x1="434" y1="220" x2="434" y2="410" class="thin"/>
-  <line x1="471" y1="220" x2="471" y2="410" class="thin"/>
-  <line x1="508" y1="220" x2="508" y2="410" class="thin"/>
+  <line x1="323" y1="235" x2="323" y2="425" class="thin"/>
+  <line x1="360" y1="235" x2="360" y2="425" class="thin"/>
+  <line x1="397" y1="235" x2="397" y2="425" class="thin"/>
+  <line x1="434" y1="235" x2="434" y2="425" class="thin"/>
+  <line x1="471" y1="235" x2="471" y2="425" class="thin"/>
+  <line x1="508" y1="235" x2="508" y2="425" class="thin"/>
 
   <!-- Header labels -->
-  <text x="159" y="243" class="cell">Player</text>
-  <text x="304.5" y="243" class="cell">1</text>
-  <text x="341.5" y="243" class="cell">2</text>
-  <text x="378.5" y="243" class="cell">3</text>
-  <text x="415.5" y="243" class="cell">4</text>
-  <text x="452.5" y="243" class="cell">5</text>
-  <text x="489.5" y="243" class="cell">6</text>
-  <text x="526.5" y="243" class="cell">7</text>
+  <text x="159" y="258" class="cell">Player</text>
+  <text x="304.5" y="258" class="cell">1</text>
+  <text x="341.5" y="258" class="cell">2</text>
+  <text x="378.5" y="258" class="cell">3</text>
+  <text x="415.5" y="258" class="cell">4</text>
+  <text x="452.5" y="258" class="cell">5</text>
+  <text x="489.5" y="258" class="cell">6</text>
+  <text x="526.5" y="258" class="cell">7</text>
 
   <!-- Player names -->
-  <text x="46" y="297" class="nameLeft">${playerA}</text>
-  <text x="46" y="365" class="nameLeft">${playerB}</text>
+  <text x="46" y="312" class="nameLeft">${playerA}</text>
+  <text x="46" y="380" class="nameLeft">${playerB}</text>
 
   <!-- Notes -->
-  <text x="32" y="455" class="bold">Notes:</text>
+  <text x="32" y="465" class="bold">Notes:</text>
 
-  <line x1="48" y1="505" x2="300" y2="505" class="thin"/>
-  <line x1="48" y1="555" x2="300" y2="555" class="thin"/>
-  <line x1="48" y1="605" x2="300" y2="605" class="thin"/>
+  <line x1="48" y1="515" x2="300" y2="515" class="thin"/>
+  <line x1="48" y1="565" x2="300" y2="565" class="thin"/>
+  <line x1="48" y1="615" x2="300" y2="615" class="thin"/>
+
+  ${qrBlock}
+
+  ${urlBlock}
 </svg>
 `;
 }
 
 async function printMatchSheetImage(data, options = {}) {
-  const svg = makeMatchSheetSvg(data, options);
+  const svg = await makeMatchSheetSvg(data, options);
   const tmpFile = path.join(os.tmpdir(), `ahms-match-${Date.now()}.png`);
 
   await sharp(Buffer.from(svg))
@@ -258,6 +322,17 @@ app.post("/print-match", async (req, res) => {
   try {
     const data = req.body || {};
     const mode = data.mode || "match";
+
+    console.log("Print request received:", {
+      mode,
+      matchNum: data.matchNum,
+      tableNum: data.tableNum,
+      refName: data.refName,
+      playerA: data.playerA,
+      playerB: data.playerB,
+      matchId: data.matchId,
+      hasScoreboardUrl: !!data.scoreboardUrl
+    });
 
     if (mode === "rank") {
       await printWithEscpos((printer) => {
