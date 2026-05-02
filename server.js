@@ -10,7 +10,8 @@
 
    QR support:
    If scoreboardUrl is included in the print payload, the match sheet
-   prints a QR code in a dedicated right side column.
+   prints a large QR code in a dedicated right side column, aligned
+   with the main score table.
 =========================================================== */
 
 const fs = require("fs");
@@ -97,7 +98,7 @@ async function makeQrDataUrl(scoreboardUrl) {
     return await QRCode.toDataURL(clean, {
       errorCorrectionLevel: "M",
       margin: 1,
-      width: 128,
+      width: 145,
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -128,10 +129,10 @@ async function makeMatchSheetSvg(data, options = {}) {
   ` : "";
 
   const qrBlock = qrDataUrl ? `
-    <!-- QR right column -->
-    <rect x="570" y="118" width="140" height="155" fill="white" stroke="black" stroke-width="2"/>
-    <text x="640" y="138" class="qrTitle">SCAN TO SCORE</text>
-    <image href="${qrDataUrl}" x="576" y="144" width="128" height="128"/>
+    <!-- Large QR block aligned with score table -->
+    <rect x="548" y="230" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
+    <text x="633" y="248" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="560" y="255" width="145" height="145"/>
   ` : "";
 
   return `
@@ -168,33 +169,33 @@ async function makeMatchSheetSvg(data, options = {}) {
   ${matchIdBlock}
   ${qrBlock}
 
-  <!-- Main score table with right side QR column reserved -->
-  <rect x="32" y="230" width="518" height="170" class="line"/>
+  <!-- Main score table made narrower to leave room for large QR -->
+  <rect x="32" y="230" width="500" height="170" class="line"/>
 
   <!-- Horizontal dividers -->
-  <line x1="32" y1="270" x2="550" y2="270" class="line"/>
-  <line x1="32" y1="335" x2="550" y2="335" class="thin"/>
+  <line x1="32" y1="270" x2="532" y2="270" class="line"/>
+  <line x1="32" y1="335" x2="532" y2="335" class="thin"/>
 
   <!-- Player column divider -->
-  <line x1="284" y1="230" x2="284" y2="400" class="line"/>
+  <line x1="292" y1="230" x2="292" y2="400" class="line"/>
 
   <!-- Score column dividers -->
-  <line x1="322" y1="230" x2="322" y2="400" class="thin"/>
+  <line x1="326" y1="230" x2="326" y2="400" class="thin"/>
   <line x1="360" y1="230" x2="360" y2="400" class="thin"/>
-  <line x1="398" y1="230" x2="398" y2="400" class="thin"/>
-  <line x1="436" y1="230" x2="436" y2="400" class="thin"/>
-  <line x1="474" y1="230" x2="474" y2="400" class="thin"/>
-  <line x1="512" y1="230" x2="512" y2="400" class="thin"/>
+  <line x1="394" y1="230" x2="394" y2="400" class="thin"/>
+  <line x1="428" y1="230" x2="428" y2="400" class="thin"/>
+  <line x1="462" y1="230" x2="462" y2="400" class="thin"/>
+  <line x1="496" y1="230" x2="496" y2="400" class="thin"/>
 
   <!-- Header labels -->
-  <text x="158" y="250" class="cell">Player</text>
-  <text x="303" y="250" class="cell">1</text>
-  <text x="341" y="250" class="cell">2</text>
-  <text x="379" y="250" class="cell">3</text>
-  <text x="417" y="250" class="cell">4</text>
-  <text x="455" y="250" class="cell">5</text>
-  <text x="493" y="250" class="cell">6</text>
-  <text x="531" y="250" class="cell">7</text>
+  <text x="162" y="250" class="cell">Player</text>
+  <text x="309" y="250" class="cell">1</text>
+  <text x="343" y="250" class="cell">2</text>
+  <text x="377" y="250" class="cell">3</text>
+  <text x="411" y="250" class="cell">4</text>
+  <text x="445" y="250" class="cell">5</text>
+  <text x="479" y="250" class="cell">6</text>
+  <text x="514" y="250" class="cell">7</text>
 
   <!-- Player names -->
   <text x="50" y="302" class="nameLeft">${playerA}</text>
