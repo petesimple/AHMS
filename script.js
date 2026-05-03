@@ -291,24 +291,47 @@ function buildScoreboardQrHTML(scoreboardUrl){
 function buildPreviewStyle(){
   return `
     <style>
+      .preview-scale-wrap {
+        width: 760px;
+        transform-origin: top left;
+        margin: 18px auto;
+      }
+
+      @media (max-width: 820px) {
+        .preview-scale-wrap {
+          transform: scale(0.72);
+          margin-left: 8px;
+          margin-bottom: -130px;
+        }
+      }
+
+      @media (min-width: 821px) and (max-width: 1000px) {
+        .preview-scale-wrap {
+          transform: scale(0.86);
+          margin-left: 12px;
+          margin-bottom: -70px;
+        }
+      }
+
       .ahms-print-preview {
         box-sizing: border-box;
         width: 760px;
-        max-width: 100%;
-        min-height: 576px;
-        margin: 18px auto;
+        height: 576px;
         padding: 28px 32px;
         background: #fff;
         color: #000;
         font-family: Arial, Helvetica, sans-serif;
         text-align: left;
         border: 2px solid #000;
+        position: relative;
+        overflow: hidden;
       }
 
       .ahms-print-preview h2 {
         margin: 0 0 28px 0;
         font-size: 30px;
         line-height: 1.1;
+        width: 500px;
       }
 
       .preview-top-line {
@@ -338,6 +361,7 @@ function buildPreviewStyle(){
         border-collapse: collapse;
         table-layout: fixed;
         font-size: 20px;
+        flex: 0 0 500px;
       }
 
       .preview-score-table th,
@@ -369,6 +393,7 @@ function buildPreviewStyle(){
         background: #fff;
         text-align: center;
         padding-top: 12px;
+        flex: 0 0 170px;
       }
 
       .preview-qr-title {
@@ -462,57 +487,59 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
 
   return `
     ${buildPreviewStyle()}
-    <div class="ahms-print-preview">
-      <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
+    <div class="preview-scale-wrap">
+      <div class="ahms-print-preview">
+        <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
 
-      <div class="preview-top-line">
-        <strong>Table #:</strong> ${escapeHtml(tableNum || "______")}
-        &nbsp;&nbsp;&nbsp;
-        <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
-      </div>
-
-      <div class="preview-player-lines">
-        <strong>Player A:</strong> ${escapeHtml(playerA || "____________________")}
-        <br>
-        <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
-      </div>
-
-      ${matchId ? `
-        <div class="preview-match-id">
-          <strong>Match ID:</strong> ${escapeHtml(matchId)}
+        <div class="preview-top-line">
+          <strong>Table #:</strong> ${escapeHtml(tableNum || "______")}
+          &nbsp;&nbsp;&nbsp;
+          <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
         </div>
-      ` : ""}
 
-      <div class="preview-main-row">
-        <table class="preview-score-table">
-          <tr>
-            <th>Player</th>
-            <th>1</th>
-            <th>2</th>
-            <th>3</th>
-            <th>4</th>
-            <th>5</th>
-            <th>6</th>
-            <th>7</th>
-          </tr>
-          <tr>
-            <td>${escapeHtml(playerA || "")}</td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-          </tr>
-          <tr>
-            <td>${escapeHtml(playerB || "")}</td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-          </tr>
-        </table>
+        <div class="preview-player-lines">
+          <strong>Player A:</strong> ${escapeHtml(playerA || "____________________")}
+          <br>
+          <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
+        </div>
 
-        ${buildScoreboardQrHTML(scoreboardUrl)}
-      </div>
+        ${matchId ? `
+          <div class="preview-match-id">
+            <strong>Match ID:</strong> ${escapeHtml(matchId)}
+          </div>
+        ` : ""}
 
-      <div class="preview-notes">
-        <strong>Notes:</strong>
-        <div class="preview-note-line"></div>
-        <div class="preview-note-line"></div>
-        <div class="preview-note-line"></div>
+        <div class="preview-main-row">
+          <table class="preview-score-table">
+            <tr>
+              <th>Player</th>
+              <th>1</th>
+              <th>2</th>
+              <th>3</th>
+              <th>4</th>
+              <th>5</th>
+              <th>6</th>
+              <th>7</th>
+            </tr>
+            <tr>
+              <td>${escapeHtml(playerA || "")}</td>
+              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+              <td>${escapeHtml(playerB || "")}</td>
+              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+          </table>
+
+          ${buildScoreboardQrHTML(scoreboardUrl)}
+        </div>
+
+        <div class="preview-notes">
+          <strong>Notes:</strong>
+          <div class="preview-note-line"></div>
+          <div class="preview-note-line"></div>
+          <div class="preview-note-line"></div>
+        </div>
       </div>
     </div>
   `;
@@ -521,49 +548,51 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
 function buildBlankPreviewHTML(){
   return `
     ${buildPreviewStyle()}
-    <div class="ahms-print-preview">
-      <h2>AIRHOCKEY MATCH SHEET - Match _____</h2>
+    <div class="preview-scale-wrap">
+      <div class="ahms-print-preview">
+        <h2>AIRHOCKEY MATCH SHEET - Match _____</h2>
 
-      <div class="preview-top-line">
-        <strong>Table #:</strong> ______
-        &nbsp;&nbsp;&nbsp;
-        <strong>Ref:</strong> ____________
-      </div>
+        <div class="preview-top-line">
+          <strong>Table #:</strong> ______
+          &nbsp;&nbsp;&nbsp;
+          <strong>Ref:</strong> ____________
+        </div>
 
-      <div class="preview-player-lines">
-        <strong>Player A:</strong> ____________________
-        <br>
-        <strong>Player B:</strong> ____________________
-      </div>
+        <div class="preview-player-lines">
+          <strong>Player A:</strong> ____________________
+          <br>
+          <strong>Player B:</strong> ____________________
+        </div>
 
-      <div class="preview-main-row">
-        <table class="preview-score-table">
-          <tr>
-            <th>Player</th>
-            <th>1</th>
-            <th>2</th>
-            <th>3</th>
-            <th>4</th>
-            <th>5</th>
-            <th>6</th>
-            <th>7</th>
-          </tr>
-          <tr>
-            <td></td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-          </tr>
-          <tr>
-            <td></td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-          </tr>
-        </table>
-      </div>
+        <div class="preview-main-row">
+          <table class="preview-score-table">
+            <tr>
+              <th>Player</th>
+              <th>1</th>
+              <th>2</th>
+              <th>3</th>
+              <th>4</th>
+              <th>5</th>
+              <th>6</th>
+              <th>7</th>
+            </tr>
+            <tr>
+              <td></td>
+              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+          </table>
+        </div>
 
-      <div class="preview-notes">
-        <strong>Notes:</strong>
-        <div class="preview-note-line"></div>
-        <div class="preview-note-line"></div>
-        <div class="preview-note-line"></div>
+        <div class="preview-notes">
+          <strong>Notes:</strong>
+          <div class="preview-note-line"></div>
+          <div class="preview-note-line"></div>
+          <div class="preview-note-line"></div>
+        </div>
       </div>
     </div>
   `;
