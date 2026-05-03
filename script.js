@@ -1,18 +1,14 @@
 /* ===========================================================
    AHMS script.js
    ESC/POS version with safer startup, diagnostics,
-   and scoreboard QR code support
+   scoreboard QR code support, and browser previews that
+   better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
 
      POST http://<PI_IP>:3000/print-match
 
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
-
-   New:
-   AHMS now builds a QR code that points to the live
-   airhockey-score-system scoreboard so a ref or player can
-   scan the printed match card and score the match by phone.
 =========================================================== */
 
 // If AHMS is served from the Pi, this auto points to the same Pi on port 3000.
@@ -117,13 +113,60 @@ function getMatchId(){
   return `ahms${randomId}-${yyyymmdd}`;
 }
 
+function formatPrintedAt() {
+  return new Date().toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
+}
+
+function safePreviewText(value, fallback = "") {
+  return String(value || fallback).replace(/[^\x20-\x7E\n\r\t]/g, "");
+}
+
+function shortRankName(name) {
+  const clean = safePreviewText(name || "").trim().replace(/\s+/g, " ");
+  if (!clean) return "Player";
+
+  const parts = clean.split(" ").filter(Boolean);
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 4);
+  }
+
+  const firstInitial = parts[0].charAt(0).toUpperCase();
+  const last = parts[parts.length - 1].slice(0, 5);
+
+  return `${firstInitial} ${last}`;
+}
+
+function padRight(value, width) {
+  const clean = safePreviewText(value || "");
+  if (clean.length >= width) return clean.slice(0, width);
+  return clean + " ".repeat(width - clean.length);
+}
+
+function buildRankSetBlockHTML(setNum, playerA, playerB) {
+  const a = escapeHtml(padRight(shortRankName(playerA), 7));
+  const b = escapeHtml(padRight(shortRankName(playerB), 7));
+
+  return `
+    <div class="rank-set-block">
+      <div class="rank-set-title">SET ${setNum}</div>
+      <pre>Player   1  2  3  4  5  6  7
+${a} [_][_][_][_][_][_][_]
+${b} [_][_][_][_][_][_][_]</pre>
+    </div>
+  `;
+}
+
 async function renderScoreboardQr(scoreboardUrl){
   const canvas = $("scoreboardQr");
-  const textEl = $("scoreboardQrText");
-
-  if(textEl){
-    textEl.textContent = scoreboardUrl || "";
-  }
 
   if(!canvas || !scoreboardUrl){
     return;
@@ -137,7 +180,7 @@ async function renderScoreboardQr(scoreboardUrl){
     }
 
     QRCode.toCanvas(canvas, scoreboardUrl, {
-      width: 150,
+      width: 145,
       margin: 1,
       color: {
         dark: "#000000",
@@ -155,7 +198,7 @@ async function renderScoreboardQr(scoreboardUrl){
 
     if(holder){
       holder.innerHTML = `
-        <p><strong>Scan to Score Match:</strong></p>
+        <div style="font-weight:bold;">SCAN TO SCORE</div>
         <p style="font-size:12px; word-break:break-all;">${escapeHtml(scoreboardUrl)}</p>
       `;
     }
@@ -238,13 +281,172 @@ function buildScoreboardQrHTML(scoreboardUrl){
   }
 
   return `
-    <div id="scoreboardQrHolder" style="text-align:center; margin: 12px 0;">
-      <p style="margin-bottom:6px;"><strong>Scan to Score Match</strong></p>
-      <canvas id="scoreboardQr" width="150" height="150" style="background:#fff; padding:4px;"></canvas>
-      <p id="scoreboardQrText" style="font-size:10px; line-height:1.2; word-break:break-all; margin-top:6px;">
-        ${escapeHtml(scoreboardUrl)}
-      </p>
+    <div id="scoreboardQrHolder" class="preview-qr-box">
+      <div class="preview-qr-title">SCAN TO SCORE</div>
+      <canvas id="scoreboardQr" width="145" height="145"></canvas>
     </div>
+  `;
+}
+
+function buildPreviewStyle(){
+  return `
+    <style>
+      .ahms-print-preview {
+        box-sizing: border-box;
+        width: 760px;
+        max-width: 100%;
+        min-height: 576px;
+        margin: 18px auto;
+        padding: 28px 32px;
+        background: #fff;
+        color: #000;
+        font-family: Arial, Helvetica, sans-serif;
+        text-align: left;
+        border: 2px solid #000;
+      }
+
+      .ahms-print-preview h2 {
+        margin: 0 0 28px 0;
+        font-size: 30px;
+        line-height: 1.1;
+      }
+
+      .preview-top-line {
+        font-size: 22px;
+        margin-bottom: 22px;
+      }
+
+      .preview-player-lines {
+        font-size: 22px;
+        line-height: 1.45;
+        margin-bottom: 18px;
+      }
+
+      .preview-match-id {
+        font-size: 14px;
+        margin-bottom: 18px;
+      }
+
+      .preview-main-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .preview-score-table {
+        width: 500px;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 20px;
+      }
+
+      .preview-score-table th,
+      .preview-score-table td {
+        border: 2px solid #000;
+        height: 58px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      .preview-score-table th:first-child,
+      .preview-score-table td:first-child {
+        width: 250px;
+        text-align: left;
+        padding-left: 16px;
+        font-weight: bold;
+      }
+
+      .preview-score-table th:not(:first-child),
+      .preview-score-table td:not(:first-child) {
+        width: 34px;
+      }
+
+      .preview-qr-box {
+        width: 170px;
+        height: 170px;
+        box-sizing: border-box;
+        border: 2px solid #000;
+        background: #fff;
+        text-align: center;
+        padding-top: 12px;
+      }
+
+      .preview-qr-title {
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .preview-qr-box canvas {
+        width: 145px;
+        height: 145px;
+      }
+
+      .preview-notes {
+        margin-top: 38px;
+        font-size: 22px;
+      }
+
+      .preview-note-line {
+        border-bottom: 2px solid #000;
+        height: 34px;
+      }
+
+      .rank-preview {
+        box-sizing: border-box;
+        width: 420px;
+        max-width: 100%;
+        margin: 18px auto;
+        padding: 18px;
+        background: #fff;
+        color: #000;
+        font-family: "Courier New", monospace;
+        text-align: left;
+        border: 2px solid #000;
+      }
+
+      .rank-preview h2 {
+        text-align: center;
+        margin: 0 0 10px 0;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .rank-preview p {
+        margin: 4px 0;
+      }
+
+      .rank-line {
+        border-top: 2px solid #000;
+        margin: 10px 0;
+      }
+
+      .rank-fill-line {
+        border-bottom: 1px solid #000;
+        height: 18px;
+        margin: 5px 0;
+      }
+
+      .rank-player-label {
+        font-weight: bold;
+        margin-top: 8px;
+      }
+
+      .rank-set-block {
+        margin: 12px 0;
+      }
+
+      .rank-set-title {
+        font-weight: bold;
+        margin-bottom: 2px;
+      }
+
+      .rank-set-block pre {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.35;
+        white-space: pre;
+      }
+    </style>
   `;
 }
 
@@ -259,141 +461,164 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
   });
 
   return `
-    <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
-    <p>
-      <strong>Table #:</strong> ${escapeHtml(tableNum || "_______")}
-      &nbsp; | &nbsp;
-      <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
-    </p>
+    ${buildPreviewStyle()}
+    <div class="ahms-print-preview">
+      <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
 
-    ${matchId ? `
-      <p>
-        <strong>Match ID:</strong> ${escapeHtml(matchId)}
-      </p>
-    ` : ""}
+      <div class="preview-top-line">
+        <strong>Table #:</strong> ${escapeHtml(tableNum || "______")}
+        &nbsp;&nbsp;&nbsp;
+        <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
+      </div>
 
-    ${playerA || playerB ? `
-      <p>
+      <div class="preview-player-lines">
         <strong>Player A:</strong> ${escapeHtml(playerA || "____________________")}
         <br>
         <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
-      </p>
-    ` : ""}
+      </div>
 
-    ${buildScoreboardQrHTML(scoreboardUrl)}
+      ${matchId ? `
+        <div class="preview-match-id">
+          <strong>Match ID:</strong> ${escapeHtml(matchId)}
+        </div>
+      ` : ""}
 
-    <table>
-      <tr>
-        <th>Player</th>
-        <th>1</th>
-        <th>2</th>
-        <th>3</th>
-        <th>4</th>
-        <th>5</th>
-        <th>6</th>
-        <th>7</th>
-      </tr>
-      <tr>
-        <td>
-          ${escapeHtml(playerA || "")}
-          <span style="display:inline-block;width:85%;">&nbsp;</span>
-          <hr/>
-        </td>
-        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td>
-          ${escapeHtml(playerB || "")}
-          <span style="display:inline-block;width:85%;">&nbsp;</span>
-          <hr/>
-        </td>
-        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-    </table>
+      <div class="preview-main-row">
+        <table class="preview-score-table">
+          <tr>
+            <th>Player</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+            <th>7</th>
+          </tr>
+          <tr>
+            <td>${escapeHtml(playerA || "")}</td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td>${escapeHtml(playerB || "")}</td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        </table>
 
-    <p><strong>Notes:</strong></p>
-    <p>______________________________</p>
-    <p>______________________________</p>
-    <p>______________________________</p>
+        ${buildScoreboardQrHTML(scoreboardUrl)}
+      </div>
+
+      <div class="preview-notes">
+        <strong>Notes:</strong>
+        <div class="preview-note-line"></div>
+        <div class="preview-note-line"></div>
+        <div class="preview-note-line"></div>
+      </div>
+    </div>
   `;
 }
 
 function buildBlankPreviewHTML(){
   return `
-    <h2>AIRHOCKEY MATCH SHEET - Match _____</h2>
-    <p><strong>Table #:</strong> ______ &nbsp; | &nbsp; <strong>Ref:</strong> ____________</p>
-    <table>
-      <tr>
-        <th>Player</th>
-        <th>1</th>
-        <th>2</th>
-        <th>3</th>
-        <th>4</th>
-        <th>5</th>
-        <th>6</th>
-        <th>7</th>
-      </tr>
-      <tr>
-        <td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td>
-        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td><span style="display:inline-block;width:85%;">&nbsp;</span><hr/></td>
-        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-    </table>
+    ${buildPreviewStyle()}
+    <div class="ahms-print-preview">
+      <h2>AIRHOCKEY MATCH SHEET - Match _____</h2>
 
-    <p><strong>Notes:</strong></p>
-    <p>______________________________</p>
-    <p>______________________________</p>
-    <p>______________________________</p>
+      <div class="preview-top-line">
+        <strong>Table #:</strong> ______
+        &nbsp;&nbsp;&nbsp;
+        <strong>Ref:</strong> ____________
+      </div>
+
+      <div class="preview-player-lines">
+        <strong>Player A:</strong> ____________________
+        <br>
+        <strong>Player B:</strong> ____________________
+      </div>
+
+      <div class="preview-main-row">
+        <table class="preview-score-table">
+          <tr>
+            <th>Player</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+            <th>7</th>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="preview-notes">
+        <strong>Notes:</strong>
+        <div class="preview-note-line"></div>
+        <div class="preview-note-line"></div>
+        <div class="preview-note-line"></div>
+      </div>
+    </div>
   `;
 }
 
-function buildRankPreviewHTML(){
+function buildRankPreviewHTML({ matchNum = "", tableNum = "", refName = "", playerA = "", playerB = "" } = {}){
+  const printedAt = formatPrintedAt();
+  const sets = Array.from({ length: 7 }, (_, i) => buildRankSetBlockHTML(i + 1, playerA, playerB)).join("");
+
   return `
-    <div class="receipt">
+    ${buildPreviewStyle()}
+    <div class="rank-preview">
       <h2>RANK MATCH</h2>
-      <p><strong>Match:</strong> __________</p>
-      <p><strong>Table:</strong> __________</p>
-      <p><strong>Ref:</strong> ______________</p>
-      <p><strong>Wit(s):</strong> ______________</p>
 
-      <hr>
+      <div class="rank-line"></div>
 
-      <p><strong>Player A:</strong> ____________________</p>
-      <p>Nat#: ____ Reg#: ____ Loc#: ____</p>
+      <p><strong>Date/Time:</strong> ${escapeHtml(printedAt)}</p>
+      <p><strong>Location:</strong> ____________________________</p>
+      <p><strong>Match:</strong> ${escapeHtml(matchNum || "__________")}</p>
+      <p><strong>Table:</strong> ${escapeHtml(tableNum || "__________")}</p>
+      <p><strong>Ref:</strong> ${escapeHtml(refName || "______________")}</p>
 
-      <p><strong>Player B:</strong> ____________________</p>
-      <p>Nat#: ____ Reg#: ____ Loc#: ____</p>
+      <p><strong>Wit(s) | Alt Ref(s)</strong></p>
+      <div class="rank-fill-line"></div>
+      <div class="rank-fill-line"></div>
 
-      <hr>
+      <div class="rank-line"></div>
 
-      <p><strong>Sets & Games:</strong></p>
-      <p>___OUT OF____GAMES/SET : ____OUT OF____ SETS/MATCH</p>
+      <p class="rank-player-label">Player A:</p>
+      <p>${escapeHtml(playerA || "____________________")}</p>
+      <p>Nat#: ____ &nbsp; Reg#: ____ &nbsp; Loc#: ____</p>
 
-      <pre>
-Set 1:[___] [___] [___] [___] [___] [___] [___]
+      <p class="rank-player-label">Player B:</p>
+      <p>${escapeHtml(playerB || "____________________")}</p>
+      <p>Nat#: ____ &nbsp; Reg#: ____ &nbsp; Loc#: ____</p>
 
-Set 2:[___] [___] [___] [___] [___] [___] [___]
+      <div class="rank-line"></div>
 
-Set 3:[___] [___] [___] [___] [___] [___] [___]
+      <p><strong>Sets & Games</strong></p>
+      <p>___ OUT OF ____ GAMES/SET</p>
+      <p>____ OUT OF ____ SETS/MATCH</p>
 
-Set 4:[___] [___] [___] [___] [___] [___] [___]
+      <div class="rank-line"></div>
 
-Set 5:[___] [___] [___] [___] [___] [___] [___]
+      ${sets}
 
-Set 6:[___] [___] [___] [___] [___] [___] [___]
+      <div class="rank-line"></div>
 
-Set 7:[___] [___] [___] [___] [___] [___] [___]
-      </pre>
-
-      <p><strong>Rank Changes:</strong> ____________________</p>
+      <p><strong>Rank Changes:</strong></p>
+      <div class="rank-fill-line"></div>
 
       <p><strong>Notes:</strong></p>
-      <p>______________________________</p>
-      <p>______________________________</p>
-      <p>______________________________</p>
+      <div class="rank-fill-line"></div>
+      <div class="rank-fill-line"></div>
+      <div class="rank-fill-line"></div>
     </div>
   `;
 }
@@ -538,7 +763,20 @@ function initAHMS(){
 
   printRankMatchBtn?.addEventListener("click", () => {
     CURRENT_MODE = "rank";
-    setOutput(buildRankPreviewHTML());
+
+    const matchNum = $("matchNum")?.value || "";
+    const tableNum = $("tableNum")?.value || "";
+    const refName  = $("refName")?.value  || "";
+    const playerA  = $("playerA")?.value  || "";
+    const playerB  = $("playerB")?.value  || "";
+
+    setOutput(buildRankPreviewHTML({
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB
+    }));
   });
 
   downloadBtn?.addEventListener("click", () => {
