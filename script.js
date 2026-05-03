@@ -291,25 +291,22 @@ function buildScoreboardQrHTML(scoreboardUrl){
 function buildPreviewStyle(){
   return `
     <style>
+      #output {
+        overflow-x: auto;
+        text-align: left;
+      }
+
       .preview-scale-wrap {
         width: 760px;
         transform-origin: top left;
-        margin: 18px auto;
+        transform: scale(0.78);
+        margin: 18px 0 -110px 10px;
       }
 
-      @media (max-width: 820px) {
+      @media (min-width: 1200px) {
         .preview-scale-wrap {
-          transform: scale(0.72);
-          margin-left: 8px;
-          margin-bottom: -130px;
-        }
-      }
-
-      @media (min-width: 821px) and (max-width: 1000px) {
-        .preview-scale-wrap {
-          transform: scale(0.86);
-          margin-left: 12px;
-          margin-bottom: -70px;
+          transform: scale(0.9);
+          margin-bottom: -45px;
         }
       }
 
@@ -317,7 +314,6 @@ function buildPreviewStyle(){
         box-sizing: border-box;
         width: 760px;
         height: 576px;
-        padding: 28px 32px;
         background: #fff;
         color: #000;
         font-family: Arial, Helvetica, sans-serif;
@@ -328,53 +324,68 @@ function buildPreviewStyle(){
       }
 
       .ahms-print-preview h2 {
-        margin: 0 0 28px 0;
+        position: absolute;
+        left: 32px;
+        top: 28px;
+        margin: 0;
         font-size: 30px;
-        line-height: 1.1;
+        line-height: 1.08;
         width: 500px;
       }
 
       .preview-top-line {
+        position: absolute;
+        left: 32px;
+        top: 104px;
         font-size: 22px;
-        margin-bottom: 22px;
       }
 
       .preview-player-lines {
+        position: absolute;
+        left: 32px;
+        top: 146px;
         font-size: 22px;
         line-height: 1.45;
-        margin-bottom: 18px;
       }
 
       .preview-match-id {
+        position: absolute;
+        left: 32px;
+        top: 198px;
         font-size: 14px;
-        margin-bottom: 18px;
-      }
-
-      .preview-main-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 16px;
       }
 
       .preview-score-table {
+        position: absolute;
+        left: 32px;
+        top: 230px;
         width: 500px;
+        height: 170px;
         border-collapse: collapse;
         table-layout: fixed;
         font-size: 20px;
-        flex: 0 0 500px;
       }
 
       .preview-score-table th,
       .preview-score-table td {
         border: 2px solid #000;
-        height: 58px;
         text-align: center;
         vertical-align: middle;
+        box-sizing: border-box;
+      }
+
+      .preview-score-table tr:first-child {
+        height: 40px;
+      }
+
+      .preview-score-table tr:nth-child(2),
+      .preview-score-table tr:nth-child(3) {
+        height: 65px;
       }
 
       .preview-score-table th:first-child,
       .preview-score-table td:first-child {
-        width: 250px;
+        width: 260px;
         text-align: left;
         padding-left: 16px;
         font-weight: bold;
@@ -386,6 +397,9 @@ function buildPreviewStyle(){
       }
 
       .preview-qr-box {
+        position: absolute;
+        left: 548px;
+        top: 230px;
         width: 170px;
         height: 170px;
         box-sizing: border-box;
@@ -393,7 +407,6 @@ function buildPreviewStyle(){
         background: #fff;
         text-align: center;
         padding-top: 12px;
-        flex: 0 0 170px;
       }
 
       .preview-qr-title {
@@ -408,7 +421,10 @@ function buildPreviewStyle(){
       }
 
       .preview-notes {
-        margin-top: 38px;
+        position: absolute;
+        left: 32px;
+        top: 442px;
+        width: 696px;
         font-size: 22px;
       }
 
@@ -509,30 +525,28 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
           </div>
         ` : ""}
 
-        <div class="preview-main-row">
-          <table class="preview-score-table">
-            <tr>
-              <th>Player</th>
-              <th>1</th>
-              <th>2</th>
-              <th>3</th>
-              <th>4</th>
-              <th>5</th>
-              <th>6</th>
-              <th>7</th>
-            </tr>
-            <tr>
-              <td>${escapeHtml(playerA || "")}</td>
-              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-            </tr>
-            <tr>
-              <td>${escapeHtml(playerB || "")}</td>
-              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-            </tr>
-          </table>
+        <table class="preview-score-table">
+          <tr>
+            <th>Player</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+            <th>7</th>
+          </tr>
+          <tr>
+            <td>${escapeHtml(playerA || "")}</td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td>${escapeHtml(playerB || "")}</td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        </table>
 
-          ${buildScoreboardQrHTML(scoreboardUrl)}
-        </div>
+        ${buildScoreboardQrHTML(scoreboardUrl)}
 
         <div class="preview-notes">
           <strong>Notes:</strong>
@@ -564,28 +578,26 @@ function buildBlankPreviewHTML(){
           <strong>Player B:</strong> ____________________
         </div>
 
-        <div class="preview-main-row">
-          <table class="preview-score-table">
-            <tr>
-              <th>Player</th>
-              <th>1</th>
-              <th>2</th>
-              <th>3</th>
-              <th>4</th>
-              <th>5</th>
-              <th>6</th>
-              <th>7</th>
-            </tr>
-            <tr>
-              <td></td>
-              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-            </tr>
-            <tr>
-              <td></td>
-              <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-            </tr>
-          </table>
-        </div>
+        <table class="preview-score-table">
+          <tr>
+            <th>Player</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+            <th>7</th>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+          </tr>
+        </table>
 
         <div class="preview-notes">
           <strong>Notes:</strong>
