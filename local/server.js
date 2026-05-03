@@ -257,10 +257,66 @@ async function printMatchSheetImage(data, options = {}) {
   });
 }
 
+function formatPrintedAt() {
+  return new Date().toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
+}
+
+function shortRankName(name) {
+  const clean = safeText(name || "").trim().replace(/\s+/g, " ");
+  if (!clean) return "Player";
+
+  const parts = clean.split(" ").filter(Boolean);
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 4);
+  }
+
+  const firstInitial = parts[0].charAt(0).toUpperCase();
+  const last = parts[parts.length - 1].slice(0, 5);
+
+  return `${firstInitial} ${last}`;
+}
+
+function padRight(value, width) {
+  const clean = safeText(value || "");
+  if (clean.length >= width) return clean.slice(0, width);
+  return clean + " ".repeat(width - clean.length);
+}
+
+function buildRankSetBlock(setNum, playerA, playerB) {
+  const a = padRight(shortRankName(playerA), 7);
+  const b = padRight(shortRankName(playerB), 7);
+
+  return [
+    `SET ${setNum}`,
+    "Player   1  2  3  4  5  6  7",
+    `${a} [_][_][_][_][_][_][_]`,
+    `${b} [_][_][_][_][_][_][_]`
+  ].join("\n");
+}
+
 function printRankMatch(printer, data) {
+  const printedAt = formatPrintedAt();
+
   const matchNum = safeText(data.matchNum, "__________");
   const tableNum = safeText(data.tableNum, "__________");
   const refName = safeText(data.refName, "______________");
+  const playerA = safeText(data.playerA, "____________________");
+  const playerB = safeText(data.playerB, "____________________");
+
+  const setBlocks = [];
+
+  for (let i = 1; i <= 7; i++) {
+    setBlocks.push(buildRankSetBlock(i, playerA, playerB));
+  }
 
   printer
     .align("ct")
@@ -271,6 +327,8 @@ function printRankMatch(printer, data) {
     .size(0, 0)
     .align("lt")
     .text(line("="))
+    .text(`Date/Time: ${printedAt}`)
+    .text("Location: ____________________________")
     .text(`Match: ${matchNum}`)
     .text(`Table: ${tableNum}`)
     .text(`Ref: ${refName}`)
@@ -278,41 +336,37 @@ function printRankMatch(printer, data) {
     .text("________________________________________")
     .text("________________________________________")
     .text(line("-"))
-    .text("Player A: ____________________")
+    .style("b")
+    .text("Player A:")
+    .style("normal")
+    .text(playerA)
     .text("Nat#: ____  Reg#: ____  Loc#: ____")
     .text("")
-    .text("Player B: ____________________")
+    .style("b")
+    .text("Player B:")
+    .style("normal")
+    .text(playerB)
     .text("Nat#: ____  Reg#: ____  Loc#: ____")
     .text(line("-"))
     .style("b")
-    .text("Sets & Games:")
+    .text("Sets & Games")
     .style("normal")
     .text("___ OUT OF ____ GAMES/SET")
-    .text("")
     .text("____ OUT OF ____ SETS/MATCH")
-    .text("")
-    .text("Set 1")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Set 2")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Set 3")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Set 4")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Set 5")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Set 6")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Set 7")
-    .text("[___] [___] [___] [___] [___] [___] [___]")
-    .text("")
-    .text("Rank Changes: ____________________")
+    .text(line("-"));
+
+  setBlocks.forEach((block, index) => {
+    printer.text(block);
+
+    if (index < setBlocks.length - 1) {
+      printer.text("");
+    }
+  });
+
+  printer
+    .text(line("-"))
+    .text("Rank Changes:")
+    .text("________________________________________")
     .text("")
     .text("Notes:")
     .text("________________________________________")
