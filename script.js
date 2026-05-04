@@ -1,8 +1,8 @@
 /* ===========================================================
    AHMS script.js
    ESC/POS version with safer startup, diagnostics,
-   scoreboard QR code support, and browser previews that
-   better match printed output.
+   scoreboard QR code support, custom logo support,
+   and browser previews that better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
 
@@ -11,13 +11,11 @@
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
 =========================================================== */
 
-// If AHMS is served from the Pi, this auto points to the same Pi on port 3000.
-// Example: AHMS opened at http://192.168.1.181:8080
-// Bridge becomes http://192.168.1.181:3000
 const PRINT_SERVER_URL = "http://192.168.1.181:3000";
 
 const SCOREBOARD_BASE_URL = "https://petesimple.github.io/airhockey-score-system/";
 const QR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js";
+const CUSTOM_LOGO_KEY = "AHMS_CUSTOM_LOGO_DATA_URL";
 
 // ============ Utility ============
 function $(id){ return document.getElementById(id); }
@@ -49,6 +47,114 @@ async function fetchWithTimeout(url, options = {}, ms = 8000){
   } finally {
     clearTimeout(t);
   }
+}
+
+function getCustomLogoDataUrl(){
+  return localStorage.getItem(CUSTOM_LOGO_KEY) || "";
+}
+
+function saveCustomLogoDataUrl(dataUrl){
+  localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl);
+}
+
+function clearCustomLogoDataUrl(){
+  localStorage.removeItem(CUSTOM_LOGO_KEY);
+}
+
+function resizeLogoToDataUrl(file, maxWidth = 520, maxHeight = 180){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const img = new Image();
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        resolve(canvas.toDataURL("image/png"));
+      };
+
+      img.onerror = () => reject(new Error("Could not load selected logo image."));
+      img.src = reader.result;
+    };
+
+    reader.onerror = () => reject(new Error("Could not read selected logo file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function injectLogoControls(){
+  if($("customLogoPanel")) return;
+
+  const panel = document.createElement("div");
+  panel.id = "customLogoPanel";
+  panel.style.margin = "12px 0";
+  panel.style.padding = "10px";
+  panel.style.border = "1px solid #999";
+  panel.style.background = "#f6f6f6";
+  panel.style.color = "#000";
+
+  panel.innerHTML = `
+    <strong>Custom Match Card Logo</strong><br>
+    <input id="customLogoInput" type="file" accept="image/*" style="margin-top:6px;">
+    <button id="clearCustomLogoBtn" type="button">Clear Logo</button>
+    <div id="customLogoStatus" style="font-size:12px;margin-top:6px;"></div>
+  `;
+
+  const form = $("matchForm");
+  if(form && form.parentNode){
+    form.parentNode.insertBefore(panel, form);
+  } else {
+    document.body.insertBefore(panel, document.body.firstChild);
+  }
+
+  const input = $("customLogoInput");
+  const clearBtn = $("clearCustomLogoBtn");
+  const status = $("customLogoStatus");
+
+  if(getCustomLogoDataUrl()){
+    status.textContent = "Logo loaded. Generate the sheet again to preview it.";
+  } else {
+    status.textContent = "No custom logo selected.";
+  }
+
+  input?.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+
+    if(!file || !file.type.startsWith("image/")){
+      status.textContent = "Please choose an image file.";
+      return;
+    }
+
+    try{
+      status.textContent = "Saving logo...";
+      const dataUrl = await resizeLogoToDataUrl(file);
+      saveCustomLogoDataUrl(dataUrl);
+      status.textContent = "Logo saved. Generate the sheet again to preview it.";
+    }catch(err){
+      console.error("Logo save failed:", err);
+      status.textContent = err.message || "Could not save logo.";
+    }
+  });
+
+  clearBtn?.addEventListener("click", () => {
+    clearCustomLogoDataUrl();
+    status.textContent = "Logo cleared. Generate the sheet again to preview without it.";
+  });
 }
 
 function loadScriptOnce(src){
@@ -280,8 +386,11 @@ function buildScoreboardQrHTML(scoreboardUrl){
     return "";
   }
 
+  const logo = getCustomLogoDataUrl();
+
   return `
-    <div id="scoreboardQrHolder" class="preview-qr-box">
+    <div id="scoreboardQrHolder" class="preview-qr-box ${logo ? "has-logo" : ""}">
+      ${logo ? `<img class="preview-custom-logo" src="${logo}" alt="Custom Logo">` : ""}
       <div class="preview-qr-title">SCAN TO SCORE</div>
       <canvas id="scoreboardQr" width="145" height="145"></canvas>
     </div>
@@ -407,6 +516,20 @@ function buildPreviewStyle(){
         background: #fff;
         text-align: center;
         padding-top: 12px;
+      }
+
+      .preview-qr-box.has-logo {
+        top: 190px;
+        height: 210px;
+        padding-top: 8px;
+      }
+
+      .preview-custom-logo {
+        max-width: 140px;
+        max-height: 38px;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto 4px auto;
       }
 
       .preview-qr-title {
@@ -673,6 +796,7 @@ function getCurrentPrintPayload(){
   const refName  = $("refName")?.value  || "";
   const playerA  = $("playerA")?.value  || "";
   const playerB  = $("playerB")?.value  || "";
+  const customLogoDataUrl = getCustomLogoDataUrl();
 
   if(!CURRENT_MATCH_ID){
     CURRENT_MATCH_ID = getMatchId();
@@ -696,7 +820,8 @@ function getCurrentPrintPayload(){
       playerA,
       playerB,
       matchId: CURRENT_MATCH_ID,
-      scoreboardUrl
+      scoreboardUrl,
+      customLogoDataUrl
     };
   }
 
@@ -709,7 +834,8 @@ function getCurrentPrintPayload(){
       playerA: "",
       playerB: "",
       matchId: "",
-      scoreboardUrl: ""
+      scoreboardUrl: "",
+      customLogoDataUrl
     };
   }
 
@@ -721,13 +847,16 @@ function getCurrentPrintPayload(){
     playerA,
     playerB,
     matchId: CURRENT_MATCH_ID,
-    scoreboardUrl
+    scoreboardUrl,
+    customLogoDataUrl
   };
 }
 
 function initAHMS(){
   console.log("AHMS script loaded.");
   console.log("Print bridge URL:", PRINT_SERVER_URL);
+
+  injectLogoControls();
 
   const matchForm = $("matchForm");
   const printBtn = $("printBtn");
