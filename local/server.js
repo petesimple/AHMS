@@ -12,6 +12,10 @@
    If scoreboardUrl is included in the print payload, the match sheet
    prints a large QR code in a dedicated right side column, aligned
    with the main score table.
+
+   Custom logo support:
+   If customLogoDataUrl is included in the print payload, the logo
+   prints above the QR code.
 =========================================================== */
 
 const fs = require("fs");
@@ -35,7 +39,7 @@ const PRINTER_IP = "192.168.1.229";
 const PRINTER_PORT = 9100;
 
 app.use(cors());
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "8mb" }));
 
 // If you put index.html, script.js, style.css in ./public,
 // this will serve the AHMS app at http://PI_IP:3000
@@ -56,6 +60,18 @@ function xmlEscape(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
+}
+
+function sanitizeDataImage(value) {
+  const clean = String(value || "").trim();
+
+  if (!clean) return "";
+
+  if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(clean)) {
+    return "";
+  }
+
+  return clean;
 }
 
 function printWithEscpos(jobFn) {
@@ -120,6 +136,8 @@ async function makeMatchSheetSvg(data, options = {}) {
   const playerB = xmlEscape(isBlank ? "" : (data.playerB || ""));
   const matchId = xmlEscape(isBlank ? "" : (data.matchId || ""));
   const scoreboardUrl = isBlank ? "" : String(data.scoreboardUrl || "").trim();
+  const customLogoDataUrl = isBlank ? "" : sanitizeDataImage(data.customLogoDataUrl);
+  const customLogoHref = xmlEscape(customLogoDataUrl);
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
 
@@ -128,12 +146,24 @@ async function makeMatchSheetSvg(data, options = {}) {
     <text x="125" y="204" class="smallText">${matchId}</text>
   ` : "";
 
-  const qrBlock = qrDataUrl ? `
+  let qrBlock = "";
+
+  if (qrDataUrl && customLogoDataUrl) {
+    qrBlock = `
+    <!-- Logo and QR block aligned with score table -->
+    <rect x="548" y="190" width="170" height="210" fill="white" stroke="black" stroke-width="2"/>
+    <image href="${customLogoHref}" x="563" y="198" width="140" height="38" preserveAspectRatio="xMidYMid meet"/>
+    <text x="633" y="244" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="560" y="250" width="145" height="145"/>
+    `;
+  } else if (qrDataUrl) {
+    qrBlock = `
     <!-- Large QR block aligned with score table -->
     <rect x="548" y="230" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
     <text x="633" y="248" class="qrTitle">SCAN TO SCORE</text>
     <image href="${qrDataUrl}" x="560" y="255" width="145" height="145"/>
-  ` : "";
+    `;
+  }
 
   return `
 <svg width="760" height="576" viewBox="0 0 760 576" xmlns="http://www.w3.org/2000/svg">
@@ -387,7 +417,8 @@ app.post("/print-match", async (req, res) => {
       playerA: data.playerA,
       playerB: data.playerB,
       matchId: data.matchId,
-      hasScoreboardUrl: !!data.scoreboardUrl
+      hasScoreboardUrl: !!data.scoreboardUrl,
+      hasCustomLogo: !!data.customLogoDataUrl
     });
 
     if (mode === "rank") {
@@ -395,7 +426,7 @@ app.post("/print-match", async (req, res) => {
         printRankMatch(printer, data);
       });
     } else if (mode === "blank") {
-      await printMatchSheetImage({}, { blank: true });
+      await printMatchSheetImage(data, { blank: true });
     } else {
       await printMatchSheetImage(data);
     }
