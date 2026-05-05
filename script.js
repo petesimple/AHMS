@@ -107,30 +107,29 @@ function injectLogoControls(){
   panel.innerHTML = `
     <style>
       .ahms-settings-panel {
-        margin: 28px auto 14px auto;
-        max-width: 760px;
+        margin: 22px auto 10px auto;
+        padding-bottom: 14px;
+        width: 100%;
+        text-align: center;
         font-family: Arial, Helvetica, sans-serif;
       }
 
       .ahms-settings-details {
-        border: 1px solid rgba(255,255,255,0.18);
-        border-radius: 14px;
-        background: rgba(255,255,255,0.06);
-        color: #fff;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+        display: inline-block;
+        color: rgba(255,255,255,0.78);
       }
 
       .ahms-settings-details summary {
         cursor: pointer;
         list-style: none;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 14px 16px;
-        font-weight: 800;
-        letter-spacing: 0.02em;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 8px;
+        color: #8a8a8a;
+        font-size: 13px;
+        font-weight: 700;
         user-select: none;
       }
 
@@ -138,98 +137,84 @@ function injectLogoControls(){
         display: none;
       }
 
-      .ahms-settings-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
       .ahms-settings-gear {
-        display: inline-flex;
-        width: 30px;
-        height: 30px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        background: rgba(0,188,212,0.18);
-        border: 1px solid rgba(0,188,212,0.5);
+        color: #8a8a8a;
         font-size: 18px;
+        line-height: 1;
       }
 
-      .ahms-settings-caret {
-        opacity: 0.78;
-        font-size: 13px;
-        transition: transform 0.18s ease;
+      .ahms-settings-label {
+        color: #8a8a8a;
+        font-size: 12px;
+        letter-spacing: 0.02em;
       }
 
-      .ahms-settings-details[open] .ahms-settings-caret {
-        transform: rotate(180deg);
+      .ahms-settings-details summary:hover .ahms-settings-gear,
+      .ahms-settings-details summary:hover .ahms-settings-label {
+        color: #b5b5b5;
       }
 
       .ahms-settings-body {
-        border-top: 1px solid rgba(255,255,255,0.14);
-        padding: 16px;
-        background: rgba(0,0,0,0.18);
-      }
-
-      .ahms-settings-card {
-        border: 1px solid rgba(255,255,255,0.16);
-        border-radius: 12px;
-        padding: 14px;
-        background: rgba(255,255,255,0.07);
+        margin-top: 10px;
+        max-width: 360px;
+        text-align: left;
+        color: #d8d8d8;
       }
 
       .ahms-settings-card h3 {
         margin: 0 0 6px 0;
-        font-size: 16px;
+        font-size: 14px;
+        color: #ffffff;
       }
 
       .ahms-settings-card p {
         margin: 0 0 12px 0;
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.4;
-        opacity: 0.82;
+        opacity: 0.78;
       }
 
       .ahms-logo-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
         align-items: center;
       }
 
       #customLogoInput {
         max-width: 100%;
-        color: #fff;
+        color: #d8d8d8;
+        font-size: 12px;
       }
 
       #clearCustomLogoBtn {
         appearance: none;
-        border: 0;
-        border-radius: 10px;
-        padding: 9px 12px;
-        background: rgba(255,255,255,0.14);
-        color: #fff;
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 8px;
+        padding: 7px 10px;
+        background: transparent;
+        color: #d8d8d8;
+        font-size: 12px;
         font-weight: 700;
         cursor: pointer;
       }
 
       #clearCustomLogoBtn:hover {
-        background: rgba(255,255,255,0.22);
+        background: rgba(255,255,255,0.08);
       }
 
       #customLogoStatus {
-        margin-top: 10px;
-        font-size: 12px;
+        margin-top: 9px;
+        font-size: 11px;
         line-height: 1.4;
-        opacity: 0.85;
+        opacity: 0.75;
       }
 
       .ahms-logo-preview-wrap {
-        margin-top: 12px;
+        margin-top: 10px;
         display: none;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
       }
 
       .ahms-logo-preview-wrap.is-visible {
@@ -237,17 +222,17 @@ function injectLogoControls(){
       }
 
       .ahms-logo-preview {
-        max-width: 180px;
-        max-height: 60px;
+        max-width: 150px;
+        max-height: 50px;
         object-fit: contain;
         background: #fff;
-        border-radius: 8px;
-        padding: 6px;
+        border-radius: 6px;
+        padding: 5px;
       }
 
       .ahms-logo-preview-label {
-        font-size: 12px;
-        opacity: 0.78;
+        font-size: 11px;
+        opacity: 0.72;
       }
 
       @media print {
@@ -259,11 +244,8 @@ function injectLogoControls(){
 
     <details class="ahms-settings-details">
       <summary>
-        <span class="ahms-settings-title">
-          <span class="ahms-settings-gear">⚙️</span>
-          <span>Settings</span>
-        </span>
-        <span class="ahms-settings-caret">▼</span>
+        <span class="ahms-settings-gear">⚙️</span>
+        <span class="ahms-settings-label">Customize</span>
       </summary>
 
       <div class="ahms-settings-body">
@@ -289,16 +271,7 @@ function injectLogoControls(){
     </details>
   `;
 
-  const output = $("output");
-  const form = $("matchForm");
-
-  if(output && output.parentNode){
-    output.parentNode.insertBefore(panel, output.nextSibling);
-  } else if(form && form.parentNode){
-    form.parentNode.appendChild(panel);
-  } else {
-    document.body.appendChild(panel);
-  }
+  document.body.appendChild(panel);
 
   const input = $("customLogoInput");
   const clearBtn = $("clearCustomLogoBtn");
