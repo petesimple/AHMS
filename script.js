@@ -98,39 +98,237 @@ function resizeLogoToDataUrl(file, maxWidth = 520, maxHeight = 180){
 }
 
 function injectLogoControls(){
-  if($("customLogoPanel")) return;
+  if($("ahmsSettingsPanel")) return;
 
   const panel = document.createElement("div");
-  panel.id = "customLogoPanel";
-  panel.style.margin = "12px 0";
-  panel.style.padding = "10px";
-  panel.style.border = "1px solid #999";
-  panel.style.background = "#f6f6f6";
-  panel.style.color = "#000";
+  panel.id = "ahmsSettingsPanel";
+  panel.className = "ahms-settings-panel";
 
   panel.innerHTML = `
-    <strong>Custom Match Card Logo</strong><br>
-    <input id="customLogoInput" type="file" accept="image/*" style="margin-top:6px;">
-    <button id="clearCustomLogoBtn" type="button">Clear Logo</button>
-    <div id="customLogoStatus" style="font-size:12px;margin-top:6px;"></div>
+    <style>
+      .ahms-settings-panel {
+        margin: 28px auto 14px auto;
+        max-width: 760px;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .ahms-settings-details {
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 14px;
+        background: rgba(255,255,255,0.06);
+        color: #fff;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+      }
+
+      .ahms-settings-details summary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 16px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        user-select: none;
+      }
+
+      .ahms-settings-details summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .ahms-settings-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .ahms-settings-gear {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(0,188,212,0.18);
+        border: 1px solid rgba(0,188,212,0.5);
+        font-size: 18px;
+      }
+
+      .ahms-settings-caret {
+        opacity: 0.78;
+        font-size: 13px;
+        transition: transform 0.18s ease;
+      }
+
+      .ahms-settings-details[open] .ahms-settings-caret {
+        transform: rotate(180deg);
+      }
+
+      .ahms-settings-body {
+        border-top: 1px solid rgba(255,255,255,0.14);
+        padding: 16px;
+        background: rgba(0,0,0,0.18);
+      }
+
+      .ahms-settings-card {
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 12px;
+        padding: 14px;
+        background: rgba(255,255,255,0.07);
+      }
+
+      .ahms-settings-card h3 {
+        margin: 0 0 6px 0;
+        font-size: 16px;
+      }
+
+      .ahms-settings-card p {
+        margin: 0 0 12px 0;
+        font-size: 13px;
+        line-height: 1.4;
+        opacity: 0.82;
+      }
+
+      .ahms-logo-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      #customLogoInput {
+        max-width: 100%;
+        color: #fff;
+      }
+
+      #clearCustomLogoBtn {
+        appearance: none;
+        border: 0;
+        border-radius: 10px;
+        padding: 9px 12px;
+        background: rgba(255,255,255,0.14);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      #clearCustomLogoBtn:hover {
+        background: rgba(255,255,255,0.22);
+      }
+
+      #customLogoStatus {
+        margin-top: 10px;
+        font-size: 12px;
+        line-height: 1.4;
+        opacity: 0.85;
+      }
+
+      .ahms-logo-preview-wrap {
+        margin-top: 12px;
+        display: none;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .ahms-logo-preview-wrap.is-visible {
+        display: flex;
+      }
+
+      .ahms-logo-preview {
+        max-width: 180px;
+        max-height: 60px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 8px;
+        padding: 6px;
+      }
+
+      .ahms-logo-preview-label {
+        font-size: 12px;
+        opacity: 0.78;
+      }
+
+      @media print {
+        .ahms-settings-panel {
+          display: none !important;
+        }
+      }
+    </style>
+
+    <details class="ahms-settings-details">
+      <summary>
+        <span class="ahms-settings-title">
+          <span class="ahms-settings-gear">⚙️</span>
+          <span>Settings</span>
+        </span>
+        <span class="ahms-settings-caret">▼</span>
+      </summary>
+
+      <div class="ahms-settings-body">
+        <div class="ahms-settings-card">
+          <h3>Custom Match Card Logo</h3>
+          <p>
+            Optional. Add a small logo above the scoreboard QR code on printed match cards.
+          </p>
+
+          <div class="ahms-logo-row">
+            <input id="customLogoInput" type="file" accept="image/*">
+            <button id="clearCustomLogoBtn" type="button">Clear Logo</button>
+          </div>
+
+          <div id="customLogoStatus"></div>
+
+          <div id="customLogoPreviewWrap" class="ahms-logo-preview-wrap">
+            <img id="customLogoPreview" class="ahms-logo-preview" alt="Custom logo preview">
+            <span class="ahms-logo-preview-label">Current logo</span>
+          </div>
+        </div>
+      </div>
+    </details>
   `;
 
+  const output = $("output");
   const form = $("matchForm");
-  if(form && form.parentNode){
-    form.parentNode.insertBefore(panel, form);
+
+  if(output && output.parentNode){
+    output.parentNode.insertBefore(panel, output.nextSibling);
+  } else if(form && form.parentNode){
+    form.parentNode.appendChild(panel);
   } else {
-    document.body.insertBefore(panel, document.body.firstChild);
+    document.body.appendChild(panel);
   }
 
   const input = $("customLogoInput");
   const clearBtn = $("clearCustomLogoBtn");
   const status = $("customLogoStatus");
+  const previewWrap = $("customLogoPreviewWrap");
+  const preview = $("customLogoPreview");
 
-  if(getCustomLogoDataUrl()){
-    status.textContent = "Logo loaded. Generate the sheet again to preview it.";
-  } else {
-    status.textContent = "No custom logo selected.";
+  function refreshLogoSettingsUI(){
+    const logo = getCustomLogoDataUrl();
+
+    if(logo){
+      status.textContent = "Logo loaded. Generate the sheet again to preview it.";
+
+      if(preview){
+        preview.src = logo;
+      }
+
+      previewWrap?.classList.add("is-visible");
+    } else {
+      status.textContent = "No custom logo selected.";
+
+      if(preview){
+        preview.removeAttribute("src");
+      }
+
+      previewWrap?.classList.remove("is-visible");
+    }
   }
+
+  refreshLogoSettingsUI();
 
   input?.addEventListener("change", async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -144,7 +342,7 @@ function injectLogoControls(){
       status.textContent = "Saving logo...";
       const dataUrl = await resizeLogoToDataUrl(file);
       saveCustomLogoDataUrl(dataUrl);
-      status.textContent = "Logo saved. Generate the sheet again to preview it.";
+      refreshLogoSettingsUI();
     }catch(err){
       console.error("Logo save failed:", err);
       status.textContent = err.message || "Could not save logo.";
@@ -153,6 +351,12 @@ function injectLogoControls(){
 
   clearBtn?.addEventListener("click", () => {
     clearCustomLogoDataUrl();
+
+    if(input){
+      input.value = "";
+    }
+
+    refreshLogoSettingsUI();
     status.textContent = "Logo cleared. Generate the sheet again to preview without it.";
   });
 }
