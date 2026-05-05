@@ -116,7 +116,6 @@ function injectLogoControls(){
 
       .ahms-settings-details {
         display: inline-block;
-        color: rgba(255,255,255,0.78);
       }
 
       .ahms-settings-details summary {
@@ -125,11 +124,8 @@ function injectLogoControls(){
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
         padding: 6px 8px;
         color: #8a8a8a;
-        font-size: 13px;
-        font-weight: 700;
         user-select: none;
       }
 
@@ -139,39 +135,37 @@ function injectLogoControls(){
 
       .ahms-settings-gear {
         color: #8a8a8a;
-        font-size: 18px;
+        font-size: 20px;
         line-height: 1;
       }
 
-      .ahms-settings-label {
-        color: #8a8a8a;
-        font-size: 12px;
-        letter-spacing: 0.02em;
-      }
-
-      .ahms-settings-details summary:hover .ahms-settings-gear,
-      .ahms-settings-details summary:hover .ahms-settings-label {
+      .ahms-settings-details summary:hover .ahms-settings-gear {
         color: #b5b5b5;
       }
 
       .ahms-settings-body {
         margin-top: 10px;
-        max-width: 360px;
+        max-width: 380px;
         text-align: left;
-        color: #d8d8d8;
+        color: #000;
+        background: #f4f4f4;
+        border: 1px solid #d0d0d0;
+        border-radius: 10px;
+        padding: 14px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.18);
       }
 
       .ahms-settings-card h3 {
         margin: 0 0 6px 0;
-        font-size: 14px;
-        color: #ffffff;
+        font-size: 15px;
+        color: #000;
       }
 
       .ahms-settings-card p {
         margin: 0 0 12px 0;
         font-size: 12px;
         line-height: 1.4;
-        opacity: 0.78;
+        color: #222;
       }
 
       .ahms-logo-row {
@@ -183,31 +177,31 @@ function injectLogoControls(){
 
       #customLogoInput {
         max-width: 100%;
-        color: #d8d8d8;
+        color: #000;
         font-size: 12px;
       }
 
       #clearCustomLogoBtn {
         appearance: none;
-        border: 1px solid rgba(255,255,255,0.18);
+        border: 1px solid #999;
         border-radius: 8px;
         padding: 7px 10px;
-        background: transparent;
-        color: #d8d8d8;
+        background: #fff;
+        color: #000;
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
       }
 
       #clearCustomLogoBtn:hover {
-        background: rgba(255,255,255,0.08);
+        background: #e9e9e9;
       }
 
       #customLogoStatus {
         margin-top: 9px;
         font-size: 11px;
         line-height: 1.4;
-        opacity: 0.75;
+        color: #333;
       }
 
       .ahms-logo-preview-wrap {
@@ -226,13 +220,14 @@ function injectLogoControls(){
         max-height: 50px;
         object-fit: contain;
         background: #fff;
+        border: 1px solid #ddd;
         border-radius: 6px;
         padding: 5px;
       }
 
       .ahms-logo-preview-label {
         font-size: 11px;
-        opacity: 0.72;
+        color: #333;
       }
 
       @media print {
@@ -243,9 +238,8 @@ function injectLogoControls(){
     </style>
 
     <details class="ahms-settings-details">
-      <summary>
+      <summary aria-label="Settings">
         <span class="ahms-settings-gear">⚙️</span>
-        <span class="ahms-settings-label">Customize</span>
       </summary>
 
       <div class="ahms-settings-body">
