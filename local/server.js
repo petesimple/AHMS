@@ -5,13 +5,14 @@
    Browser AHMS app sends JSON to:
    POST http://PI_IP:3000/print-match
 
-   Normal match sheets and blank cards print as landscape raster images.
+   Normal match sheets, blank cards, and Photon cards print
+   as landscape raster images.
+
    Rank matches print as regular ESC/POS text.
 
    QR support:
    If scoreboardUrl is included in the print payload, the match sheet
-   prints a large QR code in a dedicated right side column, aligned
-   with the main score table.
+   prints a large QR code in a dedicated right side column.
 
    Custom logo support:
    If customLogoDataUrl is included in the print payload, the logo
@@ -126,6 +127,29 @@ async function makeQrDataUrl(scoreboardUrl) {
   }
 }
 
+function makeQrBlock({ qrDataUrl, customLogoDataUrl, x = 548, y = 230, withLogoY = 190 }) {
+  const customLogoHref = xmlEscape(customLogoDataUrl || "");
+
+  if (qrDataUrl && customLogoDataUrl) {
+    return `
+    <rect x="${x}" y="${withLogoY}" width="170" height="210" fill="white" stroke="black" stroke-width="2"/>
+    <image href="${customLogoHref}" x="${x + 15}" y="${withLogoY + 8}" width="140" height="38" preserveAspectRatio="xMidYMid meet"/>
+    <text x="${x + 85}" y="${withLogoY + 54}" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="${x + 12}" y="${withLogoY + 60}" width="145" height="145"/>
+    `;
+  }
+
+  if (qrDataUrl) {
+    return `
+    <rect x="${x}" y="${y}" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
+    <text x="${x + 85}" y="${y + 18}" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="${x + 12}" y="${y + 25}" width="145" height="145"/>
+    `;
+  }
+
+  return "";
+}
+
 async function makeMatchSheetSvg(data, options = {}) {
   const isBlank = !!options.blank;
 
@@ -137,33 +161,20 @@ async function makeMatchSheetSvg(data, options = {}) {
   const matchId = xmlEscape(isBlank ? "" : (data.matchId || ""));
   const scoreboardUrl = isBlank ? "" : String(data.scoreboardUrl || "").trim();
   const customLogoDataUrl = isBlank ? "" : sanitizeDataImage(data.customLogoDataUrl);
-  const customLogoHref = xmlEscape(customLogoDataUrl);
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
+  const qrBlock = makeQrBlock({
+    qrDataUrl,
+    customLogoDataUrl,
+    x: 548,
+    y: 230,
+    withLogoY: 190
+  });
 
   const matchIdBlock = matchId ? `
     <text x="32" y="204" class="smallBold">Match ID:</text>
     <text x="125" y="204" class="smallText">${matchId}</text>
   ` : "";
-
-  let qrBlock = "";
-
-  if (qrDataUrl && customLogoDataUrl) {
-    qrBlock = `
-    <!-- Logo and QR block aligned with score table -->
-    <rect x="548" y="190" width="170" height="210" fill="white" stroke="black" stroke-width="2"/>
-    <image href="${customLogoHref}" x="563" y="198" width="140" height="38" preserveAspectRatio="xMidYMid meet"/>
-    <text x="633" y="244" class="qrTitle">SCAN TO SCORE</text>
-    <image href="${qrDataUrl}" x="560" y="250" width="145" height="145"/>
-    `;
-  } else if (qrDataUrl) {
-    qrBlock = `
-    <!-- Large QR block aligned with score table -->
-    <rect x="548" y="230" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
-    <text x="633" y="248" class="qrTitle">SCAN TO SCORE</text>
-    <image href="${qrDataUrl}" x="560" y="255" width="145" height="145"/>
-    `;
-  }
 
   return `
 <svg width="760" height="576" viewBox="0 0 760 576" xmlns="http://www.w3.org/2000/svg">
@@ -199,17 +210,13 @@ async function makeMatchSheetSvg(data, options = {}) {
   ${matchIdBlock}
   ${qrBlock}
 
-  <!-- Main score table made narrower to leave room for large QR -->
   <rect x="32" y="230" width="500" height="170" class="line"/>
 
-  <!-- Horizontal dividers -->
   <line x1="32" y1="270" x2="532" y2="270" class="line"/>
   <line x1="32" y1="335" x2="532" y2="335" class="thin"/>
 
-  <!-- Player column divider -->
   <line x1="292" y1="230" x2="292" y2="400" class="line"/>
 
-  <!-- Score column dividers -->
   <line x1="326" y1="230" x2="326" y2="400" class="thin"/>
   <line x1="360" y1="230" x2="360" y2="400" class="thin"/>
   <line x1="394" y1="230" x2="394" y2="400" class="thin"/>
@@ -217,7 +224,6 @@ async function makeMatchSheetSvg(data, options = {}) {
   <line x1="462" y1="230" x2="462" y2="400" class="thin"/>
   <line x1="496" y1="230" x2="496" y2="400" class="thin"/>
 
-  <!-- Header labels -->
   <text x="162" y="250" class="cell">Player</text>
   <text x="309" y="250" class="cell">1</text>
   <text x="343" y="250" class="cell">2</text>
@@ -227,11 +233,9 @@ async function makeMatchSheetSvg(data, options = {}) {
   <text x="479" y="250" class="cell">6</text>
   <text x="514" y="250" class="cell">7</text>
 
-  <!-- Player names -->
   <text x="50" y="302" class="nameLeft">${playerA}</text>
   <text x="50" y="367" class="nameLeft">${playerB}</text>
 
-  <!-- Notes -->
   <text x="32" y="445" class="bold">Notes:</text>
   <line x1="110" y1="445" x2="728" y2="445" class="thin"/>
   <line x1="32" y1="490" x2="728" y2="490" class="thin"/>
@@ -240,9 +244,94 @@ async function makeMatchSheetSvg(data, options = {}) {
 `;
 }
 
-async function printMatchSheetImage(data, options = {}) {
-  const svg = await makeMatchSheetSvg(data, options);
-  const tmpFile = path.join(os.tmpdir(), `ahms-match-${Date.now()}.png`);
+async function makePhotonSheetSvg(data) {
+  const matchNum = xmlEscape(data.matchNum || "_____");
+  const tableNum = xmlEscape(data.tableNum || "______");
+  const refName = xmlEscape(data.refName || "____________");
+  const playerA = xmlEscape(data.playerA || "");
+  const playerB = xmlEscape(data.playerB || "");
+  const matchId = xmlEscape(data.matchId || "");
+  const scoreboardUrl = String(data.scoreboardUrl || "").trim();
+  const customLogoDataUrl = sanitizeDataImage(data.customLogoDataUrl);
+
+  const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
+  const qrBlock = makeQrBlock({
+    qrDataUrl,
+    customLogoDataUrl,
+    x: 548,
+    y: 250,
+    withLogoY: 210
+  });
+
+  const matchIdBlock = matchId ? `
+    <text x="32" y="204" class="smallBold">Match ID:</text>
+    <text x="125" y="204" class="smallText">${matchId}</text>
+  ` : "";
+
+  return `
+<svg width="760" height="576" viewBox="0 0 760 576" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="576" fill="white"/>
+
+  <style>
+    .title { font-family: Arial, Helvetica, sans-serif; font-size: 31px; font-weight: 700; }
+    .text { font-family: Arial, Helvetica, sans-serif; font-size: 22px; }
+    .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
+    .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+    .smallBold { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; }
+    .helper { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+    .cell { font-family: Arial, Helvetica, sans-serif; font-size: 25px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; font-weight: 700; dominant-baseline: middle; }
+    .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
+    .line { stroke: black; stroke-width: 3; fill: none; }
+    .thin { stroke: black; stroke-width: 2; fill: none; }
+  </style>
+
+  <text x="30" y="55" class="title">PHOTON DOUBLES SHEET - Match ${matchNum}</text>
+
+  <text x="32" y="102" class="bold">Table #:</text>
+  <text x="125" y="102" class="text">${tableNum}</text>
+
+  <text x="220" y="102" class="bold">Ref:</text>
+  <text x="275" y="102" class="text">${refName}</text>
+
+  <text x="32" y="142" class="bold">Player A:</text>
+  <text x="135" y="142" class="text">${playerA}</text>
+
+  <text x="32" y="174" class="bold">Player B:</text>
+  <text x="135" y="174" class="text">${playerB}</text>
+
+  ${matchIdBlock}
+
+  <text x="32" y="224" class="helper">BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3</text>
+
+  ${qrBlock}
+
+  <rect x="32" y="230" width="500" height="210" class="line"/>
+
+  <line x1="32" y1="276" x2="532" y2="276" class="line"/>
+  <line x1="32" y1="358" x2="532" y2="358" class="thin"/>
+
+  <line x1="307" y1="230" x2="307" y2="440" class="line"/>
+  <line x1="382" y1="230" x2="382" y2="440" class="thin"/>
+  <line x1="457" y1="230" x2="457" y2="440" class="thin"/>
+
+  <text x="169" y="253" class="cell">Player / Team</text>
+  <text x="344" y="253" class="cell">G1</text>
+  <text x="419" y="253" class="cell">G2</text>
+  <text x="494" y="253" class="cell">G3</text>
+
+  <text x="50" y="317" class="nameLeft">${playerA}</text>
+  <text x="50" y="399" class="nameLeft">${playerB}</text>
+
+  <text x="32" y="478" class="bold">Notes:</text>
+  <line x1="110" y1="478" x2="728" y2="478" class="thin"/>
+  <line x1="32" y1="522" x2="728" y2="522" class="thin"/>
+</svg>
+`;
+}
+
+async function printSheetImageFromSvg(svg, label = "ahms") {
+  const tmpFile = path.join(os.tmpdir(), `${label}-${Date.now()}.png`);
 
   await sharp(Buffer.from(svg))
     .rotate(90)
@@ -285,6 +374,16 @@ async function printMatchSheetImage(data, options = {}) {
       });
     });
   });
+}
+
+async function printMatchSheetImage(data, options = {}) {
+  const svg = await makeMatchSheetSvg(data, options);
+  return printSheetImageFromSvg(svg, "ahms-match");
+}
+
+async function printPhotonSheetImage(data) {
+  const svg = await makePhotonSheetSvg(data);
+  return printSheetImageFromSvg(svg, "ahms-photon");
 }
 
 function formatPrintedAt() {
@@ -417,6 +516,7 @@ app.post("/print-match", async (req, res) => {
       playerA: data.playerA,
       playerB: data.playerB,
       matchId: data.matchId,
+      scoreboardUrl: data.scoreboardUrl,
       hasScoreboardUrl: !!data.scoreboardUrl,
       hasCustomLogo: !!data.customLogoDataUrl
     });
@@ -427,6 +527,8 @@ app.post("/print-match", async (req, res) => {
       });
     } else if (mode === "blank") {
       await printMatchSheetImage(data, { blank: true });
+    } else if (mode === "photon") {
+      await printPhotonSheetImage(data);
     } else {
       await printMatchSheetImage(data);
     }
@@ -453,9 +555,11 @@ app.get("/ping", (req, res) => {
 
 app.get("/", (req, res, next) => {
   const indexPath = path.join(__dirname, "public", "index.html");
+
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
+
   res.send("AHMS ESC/POS bridge is running.");
 });
 
