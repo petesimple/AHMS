@@ -11,7 +11,7 @@
 </head>
 <body>
   <img src="AHMSlogo.png" alt="Air Hockey Match Sheet Logo" style="max-width: 200px; display: block; margin: 0 auto 10px;" />
-  <!-- <h1>AHMS</h1> -->
+
   <form id="matchForm">
     <label>Match #<input type="number" id="matchNum"></label>
     <label>Table #<input type="text" id="tableNum"></label>
@@ -22,22 +22,31 @@
   </form>
 
   <div id="output" class="sheet hidden"></div>
+
   <button id="printBtn" class="hidden">🖨️ Print to Epson</button>
-<button id="printBrowserBtn" class="hidden">🖨️ Print to Browser</button>
+  <button id="printBrowserBtn" class="hidden">🖨️ Print to Browser</button>
+
   <button id="printBlankBtn" type="button" style="margin-top: 10px;">
-  Print a Blank Card
-</button>
-  <button id="printRankMatchBtn">Print Rank Match</button>
+    Print a Blank Card
+  </button>
+
+  <button id="printPhotonBtn" type="button">
+    Photon Doubles Sheet
+  </button>
+
+  <button id="printRankMatchBtn" type="button">
+    Print Rank Match
+  </button>
+
   <button id="downloadBtn" class="hidden">📄 Download as .txt</button>
-  
 
   <script src="script.js"></script>
   <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(reg => console.log("Service Worker Registered"))
-      .catch(err => console.error("Service Worker Registration Failed", err));
-  }
-</script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+        .then(reg => console.log("Service Worker Registered"))
+        .catch(err => console.error("Service Worker Registration Failed", err));
+    }
+  </script>
 </body>
 </html>
