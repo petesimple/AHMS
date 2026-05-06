@@ -15,6 +15,7 @@
 const PRINT_SERVER_URL = "http://192.168.1.181:3000";
 
 const SCOREBOARD_BASE_URL = "https://petesimple.github.io/airhockey-score-system/";
+const PHOTON_BASE_URL = "https://petesimple.github.io/photon-blitz/";
 const QR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js";
 const CUSTOM_LOGO_KEY = "AHMS_CUSTOM_LOGO_DATA_URL";
 
@@ -365,6 +366,20 @@ function buildScoreboardUrl({ matchNum, tableNum, refName, playerA, playerB, mat
   if(refName) params.set("ref", refName);
 
   return `${SCOREBOARD_BASE_URL}?${params.toString()}`;
+}
+
+function buildPhotonUrl({ matchNum, tableNum, refName, playerA, playerB, matchId }){
+  const params = new URLSearchParams();
+
+  params.set("p1", playerA || "");
+  params.set("p2", playerB || "");
+
+  if(matchNum) params.set("match", matchNum);
+  if(matchId) params.set("matchid", matchId);
+  if(tableNum) params.set("table", tableNum);
+  if(refName) params.set("ref", refName);
+
+  return `${PHOTON_BASE_URL}?${params.toString()}`;
 }
 
 function getMatchId(){
@@ -932,7 +947,7 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
 }
 
 function buildPhotonPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, matchId }){
-  const scoreboardUrl = buildScoreboardUrl({
+  const scoreboardUrl = buildPhotonUrl({
     matchNum,
     tableNum,
     refName,
@@ -1142,6 +1157,15 @@ function getCurrentPrintPayload(){
   }
 
   if(CURRENT_MODE === "photon"){
+    const photonUrl = buildPhotonUrl({
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB,
+      matchId: CURRENT_MATCH_ID
+    });
+
     return {
       mode: "photon",
       matchNum,
@@ -1150,7 +1174,7 @@ function getCurrentPrintPayload(){
       playerA,
       playerB,
       matchId: CURRENT_MATCH_ID,
-      scoreboardUrl,
+      scoreboardUrl: photonUrl,
       customLogoDataUrl
     };
   }
@@ -1294,7 +1318,7 @@ function initAHMS(){
 
     CURRENT_MATCH_ID = getParam("matchid") || CURRENT_MATCH_ID || getMatchId();
 
-    const scoreboardUrl = buildScoreboardUrl({
+    const photonUrl = buildPhotonUrl({
       matchNum,
       tableNum,
       refName,
@@ -1310,7 +1334,7 @@ function initAHMS(){
       playerA,
       playerB,
       matchId: CURRENT_MATCH_ID
-    }), scoreboardUrl);
+    }), photonUrl);
   });
 
   downloadBtn?.addEventListener("click", () => {
