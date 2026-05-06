@@ -2,6 +2,7 @@
    AHMS script.js
    ESC/POS version with safer startup, diagnostics,
    scoreboard QR code support, custom logo support,
+   Photon doubles sheet support,
    and browser previews that better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
@@ -727,6 +728,83 @@ function buildPreviewStyle(){
         height: 34px;
       }
 
+      .photon-title {
+        font-size: 31px !important;
+        width: 510px !important;
+      }
+
+      .photon-helper-line {
+        position: absolute;
+        left: 32px;
+        top: 198px;
+        font-size: 14px;
+        font-weight: bold;
+        letter-spacing: 0.04em;
+      }
+
+      .photon-score-table {
+        position: absolute;
+        left: 32px;
+        top: 230px;
+        width: 500px;
+        height: 210px;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 25px;
+      }
+
+      .photon-score-table th,
+      .photon-score-table td {
+        border: 3px solid #000;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+      }
+
+      .photon-score-table tr:first-child {
+        height: 46px;
+      }
+
+      .photon-score-table tr:nth-child(2),
+      .photon-score-table tr:nth-child(3) {
+        height: 82px;
+      }
+
+      .photon-score-table th:first-child,
+      .photon-score-table td:first-child {
+        width: 275px;
+        text-align: left;
+        padding-left: 14px;
+        font-weight: bold;
+        font-size: 22px;
+      }
+
+      .photon-score-table th:not(:first-child),
+      .photon-score-table td:not(:first-child) {
+        width: 75px;
+      }
+
+      .photon-qr-box {
+        top: 250px;
+      }
+
+      .photon-qr-box.has-logo {
+        top: 210px;
+      }
+
+      .photon-notes {
+        position: absolute;
+        left: 32px;
+        top: 474px;
+        width: 696px;
+        font-size: 19px;
+      }
+
+      .photon-note-line {
+        border-bottom: 2px solid #000;
+        height: 30px;
+      }
+
       .rank-preview {
         box-sizing: border-box;
         width: 420px;
@@ -853,6 +931,73 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
   `;
 }
 
+function buildPhotonPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, matchId }){
+  const scoreboardUrl = buildScoreboardUrl({
+    matchNum,
+    tableNum,
+    refName,
+    playerA,
+    playerB,
+    matchId
+  });
+
+  return `
+    ${buildPreviewStyle()}
+    <div class="preview-scale-wrap">
+      <div class="ahms-print-preview">
+        <h2 class="photon-title">PHOTON DOUBLES SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
+
+        <div class="preview-top-line">
+          <strong>Table #:</strong> ${escapeHtml(tableNum || "______")}
+          &nbsp;&nbsp;&nbsp;
+          <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
+        </div>
+
+        <div class="preview-player-lines">
+          <strong>Player A:</strong> ${escapeHtml(playerA || "____________________")}
+          <br>
+          <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
+        </div>
+
+        ${matchId ? `
+          <div class="preview-match-id">
+            <strong>Match ID:</strong> ${escapeHtml(matchId)}
+          </div>
+        ` : ""}
+
+        <div class="photon-helper-line">
+          BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3
+        </div>
+
+        <table class="photon-score-table">
+          <tr>
+            <th>Player / Team</th>
+            <th>G1</th>
+            <th>G2</th>
+            <th>G3</th>
+          </tr>
+          <tr>
+            <td>${escapeHtml(playerA || "")}</td>
+            <td></td><td></td><td></td>
+          </tr>
+          <tr>
+            <td>${escapeHtml(playerB || "")}</td>
+            <td></td><td></td><td></td>
+          </tr>
+        </table>
+
+        ${buildScoreboardQrHTML(scoreboardUrl).replace("preview-qr-box", "preview-qr-box photon-qr-box")}
+
+        <div class="photon-notes">
+          <strong>Notes:</strong>
+          <div class="photon-note-line"></div>
+          <div class="photon-note-line"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function buildBlankPreviewHTML(){
   return `
     ${buildPreviewStyle()}
@@ -969,7 +1114,7 @@ function getCurrentPrintPayload(){
   const playerB  = $("playerB")?.value  || "";
   const customLogoDataUrl = getCustomLogoDataUrl();
 
-  if(!CURRENT_MATCH_ID){
+  if(!CURRENT_MATCH_ID && CURRENT_MODE !== "blank"){
     CURRENT_MATCH_ID = getMatchId();
   }
 
@@ -985,6 +1130,20 @@ function getCurrentPrintPayload(){
   if(CURRENT_MODE === "rank"){
     return {
       mode: "rank",
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB,
+      matchId: CURRENT_MATCH_ID,
+      scoreboardUrl,
+      customLogoDataUrl
+    };
+  }
+
+  if(CURRENT_MODE === "photon"){
+    return {
+      mode: "photon",
       matchNum,
       tableNum,
       refName,
@@ -1034,6 +1193,7 @@ function initAHMS(){
   const printBrowserBtn = $("printBrowserBtn");
   const printBlankBtn = $("printBlankBtn");
   const printRankMatchBtn = $("printRankMatchBtn");
+  const printPhotonBtn = $("printPhotonBtn");
   const downloadBtn = $("downloadBtn");
 
   if(!matchForm) console.warn("Missing #matchForm");
@@ -1041,6 +1201,7 @@ function initAHMS(){
   if(!printBrowserBtn) console.warn("Missing #printBrowserBtn");
   if(!printBlankBtn) console.warn("Missing #printBlankBtn");
   if(!printRankMatchBtn) console.warn("Missing #printRankMatchBtn");
+  if(!printPhotonBtn) console.warn("Missing #printPhotonBtn");
   if(!downloadBtn) console.warn("Missing #downloadBtn");
 
   matchForm?.addEventListener("submit", (e) => {
@@ -1111,6 +1272,8 @@ function initAHMS(){
     const playerA  = $("playerA")?.value  || "";
     const playerB  = $("playerB")?.value  || "";
 
+    CURRENT_MATCH_ID = getParam("matchid") || CURRENT_MATCH_ID || getMatchId();
+
     setOutput(buildRankPreviewHTML({
       matchNum,
       tableNum,
@@ -1118,6 +1281,36 @@ function initAHMS(){
       playerA,
       playerB
     }));
+  });
+
+  printPhotonBtn?.addEventListener("click", () => {
+    CURRENT_MODE = "photon";
+
+    const matchNum = $("matchNum")?.value || "";
+    const tableNum = $("tableNum")?.value || "";
+    const refName  = $("refName")?.value  || "";
+    const playerA  = $("playerA")?.value  || "";
+    const playerB  = $("playerB")?.value  || "";
+
+    CURRENT_MATCH_ID = getParam("matchid") || CURRENT_MATCH_ID || getMatchId();
+
+    const scoreboardUrl = buildScoreboardUrl({
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB,
+      matchId: CURRENT_MATCH_ID
+    });
+
+    setOutput(buildPhotonPreviewHTML({
+      matchNum,
+      tableNum,
+      refName,
+      playerA,
+      playerB,
+      matchId: CURRENT_MATCH_ID
+    }), scoreboardUrl);
   });
 
   downloadBtn?.addEventListener("click", () => {
@@ -1132,7 +1325,8 @@ function initAHMS(){
     const url = URL.createObjectURL(blob);
 
     const matchNum = $("matchNum")?.value || "";
-    const filename = `Match_${matchNum || "Blank"}_${Date.now()}.txt`;
+    const modeLabel = CURRENT_MODE === "photon" ? "Photon" : CURRENT_MODE === "rank" ? "Rank" : CURRENT_MODE === "blank" ? "Blank" : "Match";
+    const filename = `${modeLabel}_${matchNum || "Blank"}_${Date.now()}.txt`;
 
     const link = document.createElement("a");
     link.href = url;
@@ -1156,8 +1350,8 @@ notepad /p path\\to\\${filename}`
     const matchNum = getParam("match");
     const tableNum = getParam("table");
     const refName  = getParam("ref");
-    const playerA  = getParam("playerA");
-    const playerB  = getParam("playerB");
+    const playerA  = getParam("playerA") || getParam("p1");
+    const playerB  = getParam("playerB") || getParam("p2");
     const matchId  = getParam("matchid");
 
     if(matchId){
