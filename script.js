@@ -1310,7 +1310,8 @@ function getCurrentPrintPayload(){
       playerB,
       matchId: CURRENT_MATCH_ID,
       scoreboardUrl,
-      customLogoDataUrl
+      customLogoDataUrl,
+      roomMapDataUrl
     };
   }
 
@@ -1333,7 +1334,8 @@ function getCurrentPrintPayload(){
       playerB,
       matchId: CURRENT_MATCH_ID,
       scoreboardUrl: photonUrl,
-      customLogoDataUrl
+      customLogoDataUrl,
+      roomMapDataUrl
     };
   }
 
@@ -1347,7 +1349,8 @@ function getCurrentPrintPayload(){
       playerB: "",
       matchId: "",
       scoreboardUrl: "",
-      customLogoDataUrl
+      customLogoDataUrl,
+      roomMapDataUrl
     };
   }
 
@@ -1360,7 +1363,8 @@ function getCurrentPrintPayload(){
     playerB,
     matchId: CURRENT_MATCH_ID,
     scoreboardUrl,
-    customLogoDataUrl
+    customLogoDataUrl,
+    roomMapDataUrl 
   };
 }
 
