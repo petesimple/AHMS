@@ -12,7 +12,7 @@
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
 =========================================================== */
 
-const PRINT_SERVER_URL = "http://192.168.1.30:3000";
+const PRINT_SERVER_URL = "http://192.168.1.31:3000";
 
 const SCOREBOARD_BASE_URL = "https://petesimple.github.io/airhockey-score-system/";
 const PHOTON_BASE_URL = "https://petesimple.github.io/photon-blitz/";
