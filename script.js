@@ -1285,6 +1285,7 @@ function getCurrentPrintPayload(){
   const playerA  = $("playerA")?.value  || "";
   const playerB  = $("playerB")?.value  || "";
   const customLogoDataUrl = getCustomLogoDataUrl();
+  const roomMapDataUrl = getRoomMapDataUrlForPrint();
 
   if(!CURRENT_MATCH_ID && CURRENT_MODE !== "blank"){
     CURRENT_MATCH_ID = getMatchId();
