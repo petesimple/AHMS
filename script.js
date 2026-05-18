@@ -35,6 +35,118 @@ function getParam(name){
   return new URLSearchParams(window.location.search).get(name) || "";
 }
 
+function getRoomMapParam(){
+  const raw = getParam("roomMap");
+
+  if(!raw){
+    return null;
+  }
+
+  try{
+    return JSON.parse(raw);
+  }catch(e){
+    console.warn("Could not parse roomMap:", e);
+    return null;
+  }
+}
+
+function getPassedScoreboardUrl(){
+  return getParam("scoreboardUrl");
+}
+
+function renderRoomMapDataUrl(roomMap){
+  if(!roomMap || !Array.isArray(roomMap.tables) || !roomMap.tables.length){
+    return "";
+  }
+
+  const sourceW = Number(roomMap.canvasWidth || 1000);
+  const sourceH = Number(roomMap.canvasHeight || 620);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 170;
+  canvas.height = 86;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 10px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const selectedTable = String(roomMap.selectedTable || "").trim();
+
+  roomMap.tables.forEach(t => {
+    const isSelected = String(t.number || "").trim() === selectedTable || t.selected === true;
+
+    const rotated = Number(t.rotation || 0) % 180 === 90;
+    const sourceTableW = rotated ? 76 : 138;
+    const sourceTableH = rotated ? 138 : 76;
+
+    const x = (Number(t.x || 0) / sourceW) * canvas.width;
+    const y = (Number(t.y || 0) / sourceH) * canvas.height;
+    const w = (sourceTableW / sourceW) * canvas.width;
+    const h = (sourceTableH / sourceH) * canvas.height;
+
+    ctx.save();
+
+    ctx.lineWidth = isSelected ? 3 : 1.5;
+    ctx.strokeStyle = "#000000";
+    ctx.fillStyle = isSelected ? "#eeeeee" : "#ffffff";
+
+    ctx.beginPath();
+    ctx.rect(x, y, Math.max(8, w), Math.max(8, h));
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#000000";
+    ctx.font = isSelected ? "bold 16px Arial" : "bold 10px Arial";
+    ctx.fillText(String(t.number || ""), x + Math.max(8, w) / 2, y + Math.max(8, h) / 2);
+
+    if(isSelected){
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 2, y + 2, Math.max(8, w) - 4, Math.max(8, h) - 4);
+    }
+
+    ctx.restore();
+  });
+
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 9px Arial";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  const label = selectedTable ? `GO TO TABLE ${selectedTable}` : "ROOM MAP";
+  ctx.fillText(label, 6, 5);
+
+  return canvas.toDataURL("image/png");
+}
+
+function buildRoomMapHTML(){
+  const roomMap = getRoomMapParam();
+  const dataUrl = renderRoomMapDataUrl(roomMap);
+
+  if(!dataUrl){
+    return "";
+  }
+
+  return `
+    <div class="preview-room-map-box">
+      <img class="preview-room-map-img" src="${dataUrl}" alt="Room map">
+    </div>
+  `;
+}
+
+function getRoomMapDataUrlForPrint(){
+  return renderRoomMapDataUrl(getRoomMapParam());
+}
+
 async function fetchWithTimeout(url, options = {}, ms = 8000){
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
