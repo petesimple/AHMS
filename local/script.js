@@ -12,7 +12,7 @@
    Raspberry Pi bridge uses Node ESC/POS to print to Epson T88.
 =========================================================== */
 
-const PRINT_SERVER_URL = "http://192.168.1.181:3000";
+const PRINT_SERVER_URL = "http://192.168.1.30:3000";
 
 const SCOREBOARD_BASE_URL = "https://petesimple.github.io/airhockey-score-system/";
 const PHOTON_BASE_URL = "https://petesimple.github.io/photon-blitz/";
@@ -33,6 +33,118 @@ function escapeHtml(str){
 
 function getParam(name){
   return new URLSearchParams(window.location.search).get(name) || "";
+}
+
+function getRoomMapParam(){
+  const raw = getParam("roomMap");
+
+  if(!raw){
+    return null;
+  }
+
+  try{
+    return JSON.parse(raw);
+  }catch(e){
+    console.warn("Could not parse roomMap:", e);
+    return null;
+  }
+}
+
+function getPassedScoreboardUrl(){
+  return getParam("scoreboardUrl");
+}
+
+function renderRoomMapDataUrl(roomMap){
+  if(!roomMap || !Array.isArray(roomMap.tables) || !roomMap.tables.length){
+    return "";
+  }
+
+  const sourceW = Number(roomMap.canvasWidth || 1000);
+  const sourceH = Number(roomMap.canvasHeight || 620);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 170;
+  canvas.height = 86;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 10px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const selectedTable = String(roomMap.selectedTable || "").trim();
+
+  roomMap.tables.forEach(t => {
+    const isSelected = String(t.number || "").trim() === selectedTable || t.selected === true;
+
+    const rotated = Number(t.rotation || 0) % 180 === 90;
+    const sourceTableW = rotated ? 76 : 138;
+    const sourceTableH = rotated ? 138 : 76;
+
+    const x = (Number(t.x || 0) / sourceW) * canvas.width;
+    const y = (Number(t.y || 0) / sourceH) * canvas.height;
+    const w = (sourceTableW / sourceW) * canvas.width;
+    const h = (sourceTableH / sourceH) * canvas.height;
+
+    ctx.save();
+
+    ctx.lineWidth = isSelected ? 3 : 1.5;
+    ctx.strokeStyle = "#000000";
+    ctx.fillStyle = isSelected ? "#eeeeee" : "#ffffff";
+
+    ctx.beginPath();
+    ctx.rect(x, y, Math.max(8, w), Math.max(8, h));
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#000000";
+    ctx.font = isSelected ? "bold 16px Arial" : "bold 10px Arial";
+    ctx.fillText(String(t.number || ""), x + Math.max(8, w) / 2, y + Math.max(8, h) / 2);
+
+    if(isSelected){
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 2, y + 2, Math.max(8, w) - 4, Math.max(8, h) - 4);
+    }
+
+    ctx.restore();
+  });
+
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 9px Arial";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  const label = selectedTable ? `GO TO TABLE ${selectedTable}` : "ROOM MAP";
+  ctx.fillText(label, 6, 5);
+
+  return canvas.toDataURL("image/png");
+}
+
+function buildRoomMapHTML(){
+  const roomMap = getRoomMapParam();
+  const dataUrl = renderRoomMapDataUrl(roomMap);
+
+  if(!dataUrl){
+    return "";
+  }
+
+  return `
+    <div class="preview-room-map-box">
+      <img class="preview-room-map-img" src="${dataUrl}" alt="Room map">
+    </div>
+  `;
+}
+
+function getRoomMapDataUrlForPrint(){
+  return renderRoomMapDataUrl(getRoomMapParam());
 }
 
 async function fetchWithTimeout(url, options = {}, ms = 8000){
@@ -355,7 +467,12 @@ function loadScriptOnce(src){
 }
 
 function buildScoreboardUrl({ matchNum, tableNum, refName, playerA, playerB, matchId }){
-  const params = new URLSearchParams();
+    const passed = getPassedScoreboardUrl();
+  if(passed){
+    return passed;
+  }
+   
+   const params = new URLSearchParams();
 
   params.set("p1", playerA || "");
   params.set("p2", playerB || "");
@@ -574,9 +691,11 @@ function buildScoreboardQrHTML(scoreboardUrl){
   }
 
   const logo = getCustomLogoDataUrl();
+  const hasRoomMap = !!getRoomMapParam();
 
   return `
-    <div id="scoreboardQrHolder" class="preview-qr-box ${logo ? "has-logo" : ""}">
+    ${buildRoomMapHTML()}
+    <div id="scoreboardQrHolder" class="preview-qr-box ${logo ? "has-logo" : ""} ${hasRoomMap ? "with-room-map" : ""}">
       ${logo ? `<img class="preview-custom-logo" src="${logo}" alt="Custom Logo">` : ""}
       <div class="preview-qr-title">SCAN TO SCORE</div>
       <canvas id="scoreboardQr" width="145" height="145"></canvas>
@@ -728,6 +847,44 @@ function buildPreviewStyle(){
       .preview-qr-box canvas {
         width: 145px;
         height: 145px;
+      }
+
+            .preview-room-map-box {
+        position: absolute;
+        left: 548px;
+        top: 138px;
+        width: 170px;
+        height: 86px;
+        box-sizing: border-box;
+        border: 2px solid #000;
+        background: #fff;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .preview-room-map-img {
+        width: 170px;
+        height: 86px;
+        display: block;
+        object-fit: contain;
+      }
+
+      .preview-qr-box.with-room-map {
+        top: 230px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map {
+        top: 224px;
+        height: 176px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map .preview-custom-logo {
+        max-height: 26px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map canvas {
+        width: 132px;
+        height: 132px;
       }
 
       .preview-notes {
@@ -1128,6 +1285,7 @@ function getCurrentPrintPayload(){
   const playerA  = $("playerA")?.value  || "";
   const playerB  = $("playerB")?.value  || "";
   const customLogoDataUrl = getCustomLogoDataUrl();
+  const roomMapDataUrl = getRoomMapDataUrlForPrint();
 
   if(!CURRENT_MATCH_ID && CURRENT_MODE !== "blank"){
     CURRENT_MATCH_ID = getMatchId();
@@ -1152,7 +1310,8 @@ function getCurrentPrintPayload(){
       playerB,
       matchId: CURRENT_MATCH_ID,
       scoreboardUrl,
-      customLogoDataUrl
+      customLogoDataUrl,
+      roomMapDataUrl
     };
   }
 
@@ -1175,7 +1334,8 @@ function getCurrentPrintPayload(){
       playerB,
       matchId: CURRENT_MATCH_ID,
       scoreboardUrl: photonUrl,
-      customLogoDataUrl
+      customLogoDataUrl,
+      roomMapDataUrl
     };
   }
 
@@ -1189,7 +1349,8 @@ function getCurrentPrintPayload(){
       playerB: "",
       matchId: "",
       scoreboardUrl: "",
-      customLogoDataUrl
+      customLogoDataUrl,
+      roomMapDataUrl
     };
   }
 
@@ -1202,7 +1363,8 @@ function getCurrentPrintPayload(){
     playerB,
     matchId: CURRENT_MATCH_ID,
     scoreboardUrl,
-    customLogoDataUrl
+    customLogoDataUrl,
+    roomMapDataUrl 
   };
 }
 
