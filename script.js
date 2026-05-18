@@ -847,6 +847,44 @@ function buildPreviewStyle(){
         height: 145px;
       }
 
+            .preview-room-map-box {
+        position: absolute;
+        left: 548px;
+        top: 138px;
+        width: 170px;
+        height: 86px;
+        box-sizing: border-box;
+        border: 2px solid #000;
+        background: #fff;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .preview-room-map-img {
+        width: 170px;
+        height: 86px;
+        display: block;
+        object-fit: contain;
+      }
+
+      .preview-qr-box.with-room-map {
+        top: 230px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map {
+        top: 224px;
+        height: 176px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map .preview-custom-logo {
+        max-height: 26px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map canvas {
+        width: 132px;
+        height: 132px;
+      }
+
       .preview-notes {
         position: absolute;
         left: 32px;
