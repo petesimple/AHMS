@@ -467,7 +467,12 @@ function loadScriptOnce(src){
 }
 
 function buildScoreboardUrl({ matchNum, tableNum, refName, playerA, playerB, matchId }){
-  const params = new URLSearchParams();
+    const passed = getPassedScoreboardUrl();
+  if(passed){
+    return passed;
+  }
+   
+   const params = new URLSearchParams();
 
   params.set("p1", playerA || "");
   params.set("p2", playerB || "");
