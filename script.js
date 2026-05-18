@@ -691,9 +691,11 @@ function buildScoreboardQrHTML(scoreboardUrl){
   }
 
   const logo = getCustomLogoDataUrl();
+  const hasRoomMap = !!getRoomMapParam();
 
   return `
-    <div id="scoreboardQrHolder" class="preview-qr-box ${logo ? "has-logo" : ""}">
+    ${buildRoomMapHTML()}
+    <div id="scoreboardQrHolder" class="preview-qr-box ${logo ? "has-logo" : ""} ${hasRoomMap ? "with-room-map" : ""}">
       ${logo ? `<img class="preview-custom-logo" src="${logo}" alt="Custom Logo">` : ""}
       <div class="preview-qr-title">SCAN TO SCORE</div>
       <canvas id="scoreboardQr" width="145" height="145"></canvas>
