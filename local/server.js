@@ -17,6 +17,10 @@
    Custom logo support:
    If customLogoDataUrl is included in the print payload, the logo
    prints above the QR code.
+
+   Room map support:
+   If roomMapDataUrl is included in the print payload, a simplified
+   room map prints above the QR code.
 =========================================================== */
 
 const fs = require("fs");
@@ -127,10 +131,51 @@ async function makeQrDataUrl(scoreboardUrl) {
   }
 }
 
-function makeQrBlock({ qrDataUrl, customLogoDataUrl, x = 548, y = 230, withLogoY = 190 }) {
+function makeQrBlock({
+  qrDataUrl,
+  customLogoDataUrl,
+  roomMapDataUrl,
+  x = 548,
+  y = 230,
+  withLogoY = 190,
+  roomMapY = 138
+}) {
   const customLogoHref = xmlEscape(customLogoDataUrl || "");
+  const roomMapHref = xmlEscape(roomMapDataUrl || "");
 
-  if (qrDataUrl && customLogoDataUrl) {
+  const hasQr = !!qrDataUrl;
+  const hasLogo = !!customLogoDataUrl;
+  const hasRoomMap = !!roomMapDataUrl;
+
+  if (!hasQr && !hasRoomMap) {
+    return "";
+  }
+
+  const roomMapBlock = hasRoomMap ? `
+    <rect x="${x}" y="${roomMapY}" width="170" height="86" fill="white" stroke="black" stroke-width="2"/>
+    <image href="${roomMapHref}" x="${x}" y="${roomMapY}" width="170" height="86" preserveAspectRatio="xMidYMid meet"/>
+  ` : "";
+
+  if (hasQr && hasRoomMap && hasLogo) {
+    return `
+    ${roomMapBlock}
+    <rect x="${x}" y="${y}" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
+    <image href="${customLogoHref}" x="${x + 15}" y="${y + 7}" width="140" height="28" preserveAspectRatio="xMidYMid meet"/>
+    <text x="${x + 85}" y="${y + 48}" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="${x + 19}" y="${y + 54}" width="132" height="132"/>
+    `;
+  }
+
+  if (hasQr && hasRoomMap) {
+    return `
+    ${roomMapBlock}
+    <rect x="${x}" y="${y}" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
+    <text x="${x + 85}" y="${y + 18}" class="qrTitle">SCAN TO SCORE</text>
+    <image href="${qrDataUrl}" x="${x + 12}" y="${y + 25}" width="145" height="145"/>
+    `;
+  }
+
+  if (hasQr && hasLogo) {
     return `
     <rect x="${x}" y="${withLogoY}" width="170" height="210" fill="white" stroke="black" stroke-width="2"/>
     <image href="${customLogoHref}" x="${x + 15}" y="${withLogoY + 8}" width="140" height="38" preserveAspectRatio="xMidYMid meet"/>
@@ -139,7 +184,7 @@ function makeQrBlock({ qrDataUrl, customLogoDataUrl, x = 548, y = 230, withLogoY
     `;
   }
 
-  if (qrDataUrl) {
+  if (hasQr) {
     return `
     <rect x="${x}" y="${y}" width="170" height="170" fill="white" stroke="black" stroke-width="2"/>
     <text x="${x + 85}" y="${y + 18}" class="qrTitle">SCAN TO SCORE</text>
@@ -147,7 +192,7 @@ function makeQrBlock({ qrDataUrl, customLogoDataUrl, x = 548, y = 230, withLogoY
     `;
   }
 
-  return "";
+  return roomMapBlock;
 }
 
 async function makeMatchSheetSvg(data, options = {}) {
@@ -161,14 +206,17 @@ async function makeMatchSheetSvg(data, options = {}) {
   const matchId = xmlEscape(isBlank ? "" : (data.matchId || ""));
   const scoreboardUrl = isBlank ? "" : String(data.scoreboardUrl || "").trim();
   const customLogoDataUrl = isBlank ? "" : sanitizeDataImage(data.customLogoDataUrl);
+  const roomMapDataUrl = isBlank ? "" : sanitizeDataImage(data.roomMapDataUrl);
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
   const qrBlock = makeQrBlock({
     qrDataUrl,
     customLogoDataUrl,
+    roomMapDataUrl,
     x: 548,
     y: 230,
-    withLogoY: 190
+    withLogoY: 190,
+    roomMapY: 138
   });
 
   const matchIdBlock = matchId ? `
@@ -253,14 +301,17 @@ async function makePhotonSheetSvg(data) {
   const matchId = xmlEscape(data.matchId || "");
   const scoreboardUrl = String(data.scoreboardUrl || "").trim();
   const customLogoDataUrl = sanitizeDataImage(data.customLogoDataUrl);
+  const roomMapDataUrl = sanitizeDataImage(data.roomMapDataUrl);
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
   const qrBlock = makeQrBlock({
     qrDataUrl,
     customLogoDataUrl,
+    roomMapDataUrl,
     x: 548,
     y: 250,
-    withLogoY: 210
+    withLogoY: 210,
+    roomMapY: 154
   });
 
   const matchIdBlock = matchId ? `
@@ -518,7 +569,8 @@ app.post("/print-match", async (req, res) => {
       matchId: data.matchId,
       scoreboardUrl: data.scoreboardUrl,
       hasScoreboardUrl: !!data.scoreboardUrl,
-      hasCustomLogo: !!data.customLogoDataUrl
+      hasCustomLogo: !!data.customLogoDataUrl,
+      hasRoomMap: !!data.roomMapDataUrl
     });
 
     if (mode === "rank") {
