@@ -36,6 +36,38 @@ function getParam(name){
   return new URLSearchParams(window.location.search).get(name) || "";
 }
 
+function getTournamentMatchNum(){
+  return getParam("matchNum") || "";
+}
+
+function getBracketMatchId(){
+  return getParam("bracketMatchId") || "";
+}
+
+function getBracketLane(){
+  return getParam("bracketLane") || "";
+}
+
+function getMatchLengthParam(){
+  return getParam("match") || "";
+}
+
+function getDisplayMatchLabel(matchNum = getTournamentMatchNum(), bracketMatchId = getBracketMatchId(), bracketLane = getBracketLane()){
+  if(matchNum){
+    return `Match ${matchNum}`;
+  }
+
+  if(bracketLane && bracketMatchId){
+    return `${bracketLane} ${bracketMatchId}`;
+  }
+
+  if(bracketMatchId){
+    return bracketMatchId;
+  }
+
+  return "";
+}
+
 function getRoomMapParam(){
   const raw = getParam("roomMap");
 
@@ -773,11 +805,19 @@ function buildPreviewStyle(){
         top: 104px;
         font-size: 22px;
       }
+      
+      .preview-bracket-match {
+  		position: absolute;
+  		left: 32px;
+  		top: 126px;
+  		font-size: 15px;
+  		font-weight: bold;
+	   }
 
       .preview-player-lines {
         position: absolute;
         left: 32px;
-        top: 146px;
+        top: 152px;
         font-size: 22px;
         line-height: 1.45;
       }
@@ -785,7 +825,7 @@ function buildPreviewStyle(){
       .preview-match-id {
         position: absolute;
         left: 32px;
-        top: 198px;
+        top: 204px;
         font-size: 14px;
       }
 
@@ -1092,6 +1132,12 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
         <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
 
         <div class="preview-top-line">
+        ${getDisplayMatchLabel() ? `
+  <div class="preview-bracket-match">
+    <strong>Tournament Match:</strong> ${escapeHtml(getDisplayMatchLabel())}
+    ${getBracketMatchId() ? ` &nbsp; <strong>Bracket ID:</strong> ${escapeHtml(getBracketMatchId())}` : ""}
+  </div>
+` : ""}
           <strong>Table #:</strong> ${escapeHtml(tableNum || "______")}
           &nbsp;&nbsp;&nbsp;
           <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
@@ -1573,12 +1619,15 @@ notepad /p path\\to\\${filename}`
   });
 
   window.addEventListener("load", () => {
-    const matchNum = getParam("match");
-    const tableNum = getParam("table");
-    const refName  = getParam("ref");
-    const playerA  = getParam("playerA") || getParam("p1");
-    const playerB  = getParam("playerB") || getParam("p2");
-    const matchId  = getParam("matchid");
+  const matchLength = getMatchLengthParam();
+  const tournamentMatchNum = getTournamentMatchNum();
+  const tableNum = getParam("table");
+  const refName  = getParam("ref");
+  const playerA  = getParam("playerA") || getParam("p1");
+  const playerB  = getParam("playerB") || getParam("p2");
+  const matchId  = getParam("matchid");
+
+  const matchNum = tournamentMatchNum || matchLength;
 
     if(matchId){
       CURRENT_MATCH_ID = matchId;
