@@ -3,6 +3,7 @@
    ESC/POS version with safer startup, diagnostics,
    scoreboard QR code support, custom logo support,
    Photon doubles sheet support,
+   room map preview support,
    and browser previews that better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
@@ -52,6 +53,28 @@ function getRoomMapParam(){
 
 function getPassedScoreboardUrl(){
   return getParam("scoreboardUrl");
+}
+
+function getSelectedRoomTableLabel(roomMap = getRoomMapParam()){
+  if(!roomMap){
+    return "";
+  }
+
+  const selected = String(roomMap.selectedTable || "").trim();
+
+  if(selected){
+    return `GO TO TABLE ${selected}`;
+  }
+
+  const found = Array.isArray(roomMap.tables)
+    ? roomMap.tables.find(t => t && t.selected === true)
+    : null;
+
+  if(found && found.number){
+    return `GO TO TABLE ${String(found.number).trim()}`;
+  }
+
+  return "ROOM MAP";
 }
 
 function renderRoomMapDataUrl(roomMap){
@@ -117,14 +140,6 @@ function renderRoomMapDataUrl(roomMap){
     ctx.restore();
   });
 
-  ctx.fillStyle = "#000000";
-  ctx.font = "bold 9px Arial";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-
-  const label = selectedTable ? `GO TO TABLE ${selectedTable}` : "ROOM MAP";
-  ctx.fillText(label, 6, 5);
-
   return canvas.toDataURL("image/png");
 }
 
@@ -136,7 +151,10 @@ function buildRoomMapHTML(){
     return "";
   }
 
+  const label = getSelectedRoomTableLabel(roomMap);
+
   return `
+    <div class="preview-room-map-label">${escapeHtml(label)}</div>
     <div class="preview-room-map-box">
       <img class="preview-room-map-img" src="${dataUrl}" alt="Room map">
     </div>
@@ -467,12 +485,13 @@ function loadScriptOnce(src){
 }
 
 function buildScoreboardUrl({ matchNum, tableNum, refName, playerA, playerB, matchId }){
-    const passed = getPassedScoreboardUrl();
+  const passed = getPassedScoreboardUrl();
+
   if(passed){
     return passed;
   }
-   
-   const params = new URLSearchParams();
+
+  const params = new URLSearchParams();
 
   params.set("p1", playerA || "");
   params.set("p2", playerB || "");
@@ -811,6 +830,42 @@ function buildPreviewStyle(){
         width: 34px;
       }
 
+      .preview-room-map-label {
+        position: absolute;
+        left: 548px;
+        top: 123px;
+        width: 170px;
+        height: 15px;
+        font-size: 13px;
+        font-weight: bold;
+        line-height: 15px;
+        color: #000;
+        background: #fff;
+        text-align: left;
+        padding-left: 2px;
+        box-sizing: border-box;
+      }
+
+      .preview-room-map-box {
+        position: absolute;
+        left: 548px;
+        top: 140px;
+        width: 170px;
+        height: 86px;
+        box-sizing: border-box;
+        border: 2px solid #000;
+        background: #fff;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .preview-room-map-img {
+        width: 170px;
+        height: 86px;
+        display: block;
+        object-fit: contain;
+      }
+
       .preview-qr-box {
         position: absolute;
         left: 548px;
@@ -830,12 +885,26 @@ function buildPreviewStyle(){
         padding-top: 8px;
       }
 
+      .preview-qr-box.with-room-map {
+        top: 230px;
+      }
+
+      .preview-qr-box.has-logo.with-room-map {
+        top: 230px;
+        height: 170px;
+        padding-top: 6px;
+      }
+
       .preview-custom-logo {
         max-width: 140px;
         max-height: 38px;
         object-fit: contain;
         display: block;
         margin: 0 auto 4px auto;
+      }
+
+      .preview-qr-box.has-logo.with-room-map .preview-custom-logo {
+        max-height: 24px;
       }
 
       .preview-qr-title {
@@ -847,39 +916,6 @@ function buildPreviewStyle(){
       .preview-qr-box canvas {
         width: 145px;
         height: 145px;
-      }
-
-            .preview-room-map-box {
-        position: absolute;
-        left: 548px;
-        top: 138px;
-        width: 170px;
-        height: 86px;
-        box-sizing: border-box;
-        border: 2px solid #000;
-        background: #fff;
-        text-align: center;
-        overflow: hidden;
-      }
-
-      .preview-room-map-img {
-        width: 170px;
-        height: 86px;
-        display: block;
-        object-fit: contain;
-      }
-
-      .preview-qr-box.with-room-map {
-        top: 230px;
-      }
-
-      .preview-qr-box.has-logo.with-room-map {
-        top: 224px;
-        height: 176px;
-      }
-
-      .preview-qr-box.has-logo.with-room-map .preview-custom-logo {
-        max-height: 26px;
       }
 
       .preview-qr-box.has-logo.with-room-map canvas {
@@ -962,6 +998,10 @@ function buildPreviewStyle(){
 
       .photon-qr-box.has-logo {
         top: 210px;
+      }
+
+      .photon-qr-box.with-room-map {
+        top: 250px;
       }
 
       .photon-notes {
@@ -1364,7 +1404,7 @@ function getCurrentPrintPayload(){
     matchId: CURRENT_MATCH_ID,
     scoreboardUrl,
     customLogoDataUrl,
-    roomMapDataUrl 
+    roomMapDataUrl
   };
 }
 
