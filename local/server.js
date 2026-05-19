@@ -367,8 +367,8 @@ async function makePhotonSheetSvg(data) {
     roomMapDataUrl,
     roomMapLabel,
     x: 548,
-    y: 250,
-    withLogoY: 210,
+    y: 275,
+    withLogoY: 235,
     roomMapY: 154
   });
 
@@ -378,8 +378,8 @@ async function makePhotonSheetSvg(data) {
   ` : "";
 
   const matchIdBlock = matchId ? `
-    <text x="32" y="204" class="smallBold">Match ID:</text>
-    <text x="125" y="204" class="smallText">${matchId}</text>
+    <text x="32" y="222" class="smallBold">Match ID:</text>
+    <text x="125" y="222" class="smallText">${matchId}</text>
   ` : "";
 
   return `
@@ -392,7 +392,7 @@ async function makePhotonSheetSvg(data) {
     .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
     .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
     .smallBold { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; }
-    .helper { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+    .helper { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .6px; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 25px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; font-weight: 700; dominant-baseline: middle; }
     .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
@@ -411,38 +411,38 @@ async function makePhotonSheetSvg(data) {
 
   ${bracketInfoBlock}
 
-  <text x="32" y="148" class="bold">Player A:</text>
-  <text x="135" y="148" class="text">${playerA}</text>
+  <text x="32" y="152" class="bold">Player A:</text>
+  <text x="135" y="152" class="text">${playerA}</text>
 
-  <text x="32" y="180" class="bold">Player B:</text>
-  <text x="135" y="180" class="text">${playerB}</text>
+  <text x="32" y="190" class="bold">Player B:</text>
+  <text x="135" y="190" class="text">${playerB}</text>
 
   ${matchIdBlock}
 
-  <text x="32" y="224" class="helper">BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3</text>
+  <text x="32" y="246" class="helper">BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3</text>
 
   ${qrBlock}
 
-  <rect x="32" y="230" width="500" height="210" class="line"/>
+  <rect x="32" y="255" width="500" height="200" class="line"/>
 
-  <line x1="32" y1="276" x2="532" y2="276" class="line"/>
-  <line x1="32" y1="358" x2="532" y2="358" class="thin"/>
+  <line x1="32" y1="301" x2="532" y2="301" class="line"/>
+  <line x1="32" y1="379" x2="532" y2="379" class="thin"/>
 
-  <line x1="307" y1="230" x2="307" y2="440" class="line"/>
-  <line x1="382" y1="230" x2="382" y2="440" class="thin"/>
-  <line x1="457" y1="230" x2="457" y2="440" class="thin"/>
+  <line x1="307" y1="255" x2="307" y2="455" class="line"/>
+  <line x1="382" y1="255" x2="382" y2="455" class="thin"/>
+  <line x1="457" y1="255" x2="457" y2="455" class="thin"/>
 
-  <text x="169" y="253" class="cell">Player / Team</text>
-  <text x="344" y="253" class="cell">G1</text>
-  <text x="419" y="253" class="cell">G2</text>
-  <text x="494" y="253" class="cell">G3</text>
+  <text x="169" y="278" class="cell">Player / Team</text>
+  <text x="344" y="278" class="cell">G1</text>
+  <text x="419" y="278" class="cell">G2</text>
+  <text x="494" y="278" class="cell">G3</text>
 
-  <text x="50" y="317" class="nameLeft">${playerA}</text>
-  <text x="50" y="399" class="nameLeft">${playerB}</text>
+  <text x="50" y="340" class="nameLeft">${playerA}</text>
+  <text x="50" y="417" class="nameLeft">${playerB}</text>
 
-  <text x="32" y="478" class="bold">Notes:</text>
-  <line x1="110" y1="478" x2="728" y2="478" class="thin"/>
-  <line x1="32" y1="522" x2="728" y2="522" class="thin"/>
+  <text x="32" y="488" class="bold">Notes:</text>
+  <line x1="110" y1="488" x2="728" y2="488" class="thin"/>
+  <line x1="32" y1="532" x2="728" y2="532" class="thin"/>
 </svg>
 `;
 }
