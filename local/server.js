@@ -20,7 +20,7 @@
 
    Room map support:
    If roomMapDataUrl is included in the print payload, a simplified
-   room map prints above the QR code.
+   room map prints above the QR code with GO TO TABLE text above it.
 =========================================================== */
 
 const fs = require("fs");
@@ -40,7 +40,7 @@ const app = express();
 const SERVER_PORT = 3000;
 
 // Change this to your Epson T88 IP
-const PRINTER_IP = "192.168.1.229";
+const PRINTER_IP = "192.168.1.29";
 const PRINTER_PORT = 9100;
 
 app.use(cors());
@@ -135,6 +135,7 @@ function makeQrBlock({
   qrDataUrl,
   customLogoDataUrl,
   roomMapDataUrl,
+  roomMapLabel = "",
   x = 548,
   y = 230,
   withLogoY = 190,
@@ -142,6 +143,7 @@ function makeQrBlock({
 }) {
   const customLogoHref = xmlEscape(customLogoDataUrl || "");
   const roomMapHref = xmlEscape(roomMapDataUrl || "");
+  const roomLabel = xmlEscape(roomMapLabel || "ROOM MAP");
 
   const hasQr = !!qrDataUrl;
   const hasLogo = !!customLogoDataUrl;
@@ -152,6 +154,7 @@ function makeQrBlock({
   }
 
   const roomMapBlock = hasRoomMap ? `
+    <text x="${x + 2}" y="${roomMapY - 6}" class="roomMapLabel">${roomLabel}</text>
     <rect x="${x}" y="${roomMapY}" width="170" height="86" fill="white" stroke="black" stroke-width="2"/>
     <image href="${roomMapHref}" x="${x}" y="${roomMapY}" width="170" height="86" preserveAspectRatio="xMidYMid meet"/>
   ` : "";
@@ -198,6 +201,8 @@ function makeQrBlock({
 async function makeMatchSheetSvg(data, options = {}) {
   const isBlank = !!options.blank;
 
+  const rawTableNum = isBlank ? "" : String(data.tableNum || "").trim();
+
   const matchNum = xmlEscape(isBlank ? "_____" : (data.matchNum || "_____"));
   const tableNum = xmlEscape(isBlank ? "______" : (data.tableNum || "______"));
   const refName = xmlEscape(isBlank ? "____________" : (data.refName || "____________"));
@@ -207,12 +212,14 @@ async function makeMatchSheetSvg(data, options = {}) {
   const scoreboardUrl = isBlank ? "" : String(data.scoreboardUrl || "").trim();
   const customLogoDataUrl = isBlank ? "" : sanitizeDataImage(data.customLogoDataUrl);
   const roomMapDataUrl = isBlank ? "" : sanitizeDataImage(data.roomMapDataUrl);
+  const roomMapLabel = rawTableNum ? `GO TO TABLE ${rawTableNum}` : "ROOM MAP";
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
   const qrBlock = makeQrBlock({
     qrDataUrl,
     customLogoDataUrl,
     roomMapDataUrl,
+    roomMapLabel,
     x: 548,
     y: 230,
     withLogoY: 190,
@@ -237,6 +244,7 @@ async function makeMatchSheetSvg(data, options = {}) {
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; dominant-baseline: middle; }
     .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
+    .roomMapLabel { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; }
     .line { stroke: black; stroke-width: 2; fill: none; }
     .thin { stroke: black; stroke-width: 1.5; fill: none; }
   </style>
@@ -293,6 +301,8 @@ async function makeMatchSheetSvg(data, options = {}) {
 }
 
 async function makePhotonSheetSvg(data) {
+  const rawTableNum = String(data.tableNum || "").trim();
+
   const matchNum = xmlEscape(data.matchNum || "_____");
   const tableNum = xmlEscape(data.tableNum || "______");
   const refName = xmlEscape(data.refName || "____________");
@@ -302,12 +312,14 @@ async function makePhotonSheetSvg(data) {
   const scoreboardUrl = String(data.scoreboardUrl || "").trim();
   const customLogoDataUrl = sanitizeDataImage(data.customLogoDataUrl);
   const roomMapDataUrl = sanitizeDataImage(data.roomMapDataUrl);
+  const roomMapLabel = rawTableNum ? `GO TO TABLE ${rawTableNum}` : "ROOM MAP";
 
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
   const qrBlock = makeQrBlock({
     qrDataUrl,
     customLogoDataUrl,
     roomMapDataUrl,
+    roomMapLabel,
     x: 548,
     y: 250,
     withLogoY: 210,
@@ -333,6 +345,7 @@ async function makePhotonSheetSvg(data) {
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 25px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; font-weight: 700; dominant-baseline: middle; }
     .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
+    .roomMapLabel { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; }
     .line { stroke: black; stroke-width: 3; fill: none; }
     .thin { stroke: black; stroke-width: 2; fill: none; }
   </style>
