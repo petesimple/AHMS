@@ -21,6 +21,10 @@
    Room map support:
    If roomMapDataUrl is included in the print payload, a simplified
    room map prints above the QR code with GO TO TABLE text above it.
+
+   Bracket support:
+   If matchNum, bracketMatchId, and bracketLane are included, matchNum
+   is treated as the tournament call number shown on the printed card.
 =========================================================== */
 
 const fs = require("fs");
@@ -52,6 +56,37 @@ app.use(express.static(path.join(__dirname, "public")));
 
 function safeText(value, fallback = "") {
   return String(value || fallback).replace(/[^\x20-\x7E\n\r\t]/g, "");
+}
+
+function getDisplayMatchLabel(data = {}) {
+  const matchNum = safeText(data.matchNum || "").trim();
+  const bracketMatchId = safeText(data.bracketMatchId || "").trim();
+  const bracketLane = safeText(data.bracketLane || "").trim();
+
+  if (matchNum) {
+    return `Match ${matchNum}`;
+  }
+
+  if (bracketLane && bracketMatchId) {
+    return `${bracketLane} ${bracketMatchId}`;
+  }
+
+  if (bracketMatchId) {
+    return bracketMatchId;
+  }
+
+  return "Match _____";
+}
+
+function getBracketInfoLine(data = {}) {
+  const bracketMatchId = safeText(data.bracketMatchId || "").trim();
+  const bracketLane = safeText(data.bracketLane || "").trim();
+
+  if (bracketLane && bracketMatchId) {
+    return `${bracketLane} ${bracketMatchId}`;
+  }
+
+  return bracketMatchId;
 }
 
 function line(char = "-", count = 42) {
@@ -203,7 +238,9 @@ async function makeMatchSheetSvg(data, options = {}) {
 
   const rawTableNum = isBlank ? "" : String(data.tableNum || "").trim();
 
-  const matchNum = xmlEscape(isBlank ? "_____" : (data.matchNum || "_____"));
+  const displayMatchLabel = xmlEscape(isBlank ? "Match _____" : getDisplayMatchLabel(data));
+  const bracketInfoLine = xmlEscape(isBlank ? "" : getBracketInfoLine(data));
+
   const tableNum = xmlEscape(isBlank ? "______" : (data.tableNum || "______"));
   const refName = xmlEscape(isBlank ? "____________" : (data.refName || "____________"));
   const playerA = xmlEscape(isBlank ? "" : (data.playerA || ""));
@@ -225,6 +262,11 @@ async function makeMatchSheetSvg(data, options = {}) {
     withLogoY: 190,
     roomMapY: 138
   });
+
+  const bracketInfoBlock = bracketInfoLine ? `
+    <text x="32" y="126" class="smallBold">Bracket ID:</text>
+    <text x="125" y="126" class="smallText">${bracketInfoLine}</text>
+  ` : "";
 
   const matchIdBlock = matchId ? `
     <text x="32" y="204" class="smallBold">Match ID:</text>
@@ -249,7 +291,7 @@ async function makeMatchSheetSvg(data, options = {}) {
     .thin { stroke: black; stroke-width: 1.5; fill: none; }
   </style>
 
-  <text x="30" y="55" class="title">AIRHOCKEY MATCH SHEET - Match ${matchNum}</text>
+  <text x="30" y="55" class="title">AIRHOCKEY MATCH SHEET - ${displayMatchLabel}</text>
 
   <text x="32" y="102" class="bold">Table #:</text>
   <text x="125" y="102" class="text">${tableNum}</text>
@@ -257,11 +299,13 @@ async function makeMatchSheetSvg(data, options = {}) {
   <text x="220" y="102" class="bold">Ref:</text>
   <text x="275" y="102" class="text">${refName}</text>
 
-  <text x="32" y="142" class="bold">Player A:</text>
-  <text x="135" y="142" class="text">${playerA}</text>
+  ${bracketInfoBlock}
 
-  <text x="32" y="174" class="bold">Player B:</text>
-  <text x="135" y="174" class="text">${playerB}</text>
+  <text x="32" y="148" class="bold">Player A:</text>
+  <text x="135" y="148" class="text">${playerA}</text>
+
+  <text x="32" y="180" class="bold">Player B:</text>
+  <text x="135" y="180" class="text">${playerB}</text>
 
   ${matchIdBlock}
   ${qrBlock}
@@ -303,7 +347,9 @@ async function makeMatchSheetSvg(data, options = {}) {
 async function makePhotonSheetSvg(data) {
   const rawTableNum = String(data.tableNum || "").trim();
 
-  const matchNum = xmlEscape(data.matchNum || "_____");
+  const displayMatchLabel = xmlEscape(getDisplayMatchLabel(data));
+  const bracketInfoLine = xmlEscape(getBracketInfoLine(data));
+
   const tableNum = xmlEscape(data.tableNum || "______");
   const refName = xmlEscape(data.refName || "____________");
   const playerA = xmlEscape(data.playerA || "");
@@ -325,6 +371,11 @@ async function makePhotonSheetSvg(data) {
     withLogoY: 210,
     roomMapY: 154
   });
+
+  const bracketInfoBlock = bracketInfoLine ? `
+    <text x="32" y="126" class="smallBold">Bracket ID:</text>
+    <text x="125" y="126" class="smallText">${bracketInfoLine}</text>
+  ` : "";
 
   const matchIdBlock = matchId ? `
     <text x="32" y="204" class="smallBold">Match ID:</text>
@@ -350,7 +401,7 @@ async function makePhotonSheetSvg(data) {
     .thin { stroke: black; stroke-width: 2; fill: none; }
   </style>
 
-  <text x="30" y="55" class="title">PHOTON DOUBLES SHEET - Match ${matchNum}</text>
+  <text x="30" y="55" class="title">PHOTON DOUBLES SHEET - ${displayMatchLabel}</text>
 
   <text x="32" y="102" class="bold">Table #:</text>
   <text x="125" y="102" class="text">${tableNum}</text>
@@ -358,11 +409,13 @@ async function makePhotonSheetSvg(data) {
   <text x="220" y="102" class="bold">Ref:</text>
   <text x="275" y="102" class="text">${refName}</text>
 
-  <text x="32" y="142" class="bold">Player A:</text>
-  <text x="135" y="142" class="text">${playerA}</text>
+  ${bracketInfoBlock}
 
-  <text x="32" y="174" class="bold">Player B:</text>
-  <text x="135" y="174" class="text">${playerB}</text>
+  <text x="32" y="148" class="bold">Player A:</text>
+  <text x="135" y="148" class="text">${playerA}</text>
+
+  <text x="32" y="180" class="bold">Player B:</text>
+  <text x="135" y="180" class="text">${playerB}</text>
 
   ${matchIdBlock}
 
@@ -499,7 +552,9 @@ function buildRankSetBlock(setNum, playerA, playerB) {
 function printRankMatch(printer, data) {
   const printedAt = formatPrintedAt();
 
-  const matchNum = safeText(data.matchNum, "__________");
+  const displayMatchLabel = safeText(getDisplayMatchLabel(data), "Match _____");
+  const bracketInfoLine = safeText(getBracketInfoLine(data), "");
+
   const tableNum = safeText(data.tableNum, "__________");
   const refName = safeText(data.refName, "______________");
   const playerA = safeText(data.playerA, "____________________");
@@ -522,7 +577,8 @@ function printRankMatch(printer, data) {
     .text(line("="))
     .text(`Date/Time: ${printedAt}`)
     .text("Location: ____________________________")
-    .text(`Match: ${matchNum}`)
+    .text(`Match: ${displayMatchLabel}`)
+    .text(bracketInfoLine ? `Bracket ID: ${bracketInfoLine}` : "")
     .text(`Table: ${tableNum}`)
     .text(`Ref: ${refName}`)
     .text("Wit(s) | Alt Ref(s)")
@@ -575,6 +631,8 @@ app.post("/print-match", async (req, res) => {
     console.log("Print request received:", {
       mode,
       matchNum: data.matchNum,
+      bracketMatchId: data.bracketMatchId,
+      bracketLane: data.bracketLane,
       tableNum: data.tableNum,
       refName: data.refName,
       playerA: data.playerA,
