@@ -984,18 +984,18 @@ function buildPreviewStyle(){
       .photon-helper-line {
         position: absolute;
         left: 32px;
-        top: 198px;
-        font-size: 14px;
+        top: 220px;
+        font-size: 13px;
         font-weight: bold;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.03em;
       }
 
       .photon-score-table {
         position: absolute;
         left: 32px;
-        top: 230px;
+        top: 255px;
         width: 500px;
-        height: 210px;
+        height: 200px;
         border-collapse: collapse;
         table-layout: fixed;
         font-size: 25px;
@@ -1033,21 +1033,21 @@ function buildPreviewStyle(){
       }
 
       .photon-qr-box {
-        top: 250px;
+        top: 275px;
       }
 
       .photon-qr-box.has-logo {
-        top: 210px;
+        top: 235px;
       }
 
       .photon-qr-box.with-room-map {
-        top: 250px;
+        top: 275px;
       }
 
       .photon-notes {
         position: absolute;
         left: 32px;
-        top: 474px;
+        top: 488px;
         width: 696px;
         font-size: 19px;
       }
