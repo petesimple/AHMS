@@ -825,7 +825,7 @@ function buildPreviewStyle(){
       .preview-match-id {
         position: absolute;
         left: 32px;
-        top: 204px;
+        top: 214px;
         font-size: 14px;
       }
 
