@@ -269,8 +269,8 @@ async function makeMatchSheetSvg(data, options = {}) {
   ` : "";
 
   const matchIdBlock = matchId ? `
-    <text x="32" y="204" class="smallBold">Match ID:</text>
-    <text x="125" y="204" class="smallText">${matchId}</text>
+    <text x="32" y="558" class="tinyBold">Match ID:</text>
+    <text x="92" y="558" class="tinyText">${matchId}</text>
   ` : "";
 
   return `
@@ -283,6 +283,8 @@ async function makeMatchSheetSvg(data, options = {}) {
     .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
     .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
     .smallBold { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; }
+    .tinyText { font-family: Arial, Helvetica, sans-serif; font-size: 11px; }
+	.tinyBold { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; dominant-baseline: middle; }
     .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
@@ -340,6 +342,8 @@ async function makeMatchSheetSvg(data, options = {}) {
   <line x1="110" y1="445" x2="728" y2="445" class="thin"/>
   <line x1="32" y1="490" x2="728" y2="490" class="thin"/>
   <line x1="32" y1="535" x2="728" y2="535" class="thin"/>
+  
+  ${matchIdBlock}
 </svg>
 `;
 }
@@ -378,8 +382,8 @@ async function makePhotonSheetSvg(data) {
   ` : "";
 
   const matchIdBlock = matchId ? `
-    <text x="32" y="222" class="smallBold">Match ID:</text>
-    <text x="125" y="222" class="smallText">${matchId}</text>
+    <text x="32" y="558" class="tinyBold">Match ID:</text>
+    <text x="92" y="558" class="tinyText">${matchId}</text>
   ` : "";
 
   return `
@@ -392,6 +396,8 @@ async function makePhotonSheetSvg(data) {
     .bold { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; }
     .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
     .smallBold { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; }
+    .tinyText { font-family: Arial, Helvetica, sans-serif; font-size: 11px; }
+	.tinyBold { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; }
     .helper { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .6px; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 25px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; font-weight: 700; dominant-baseline: middle; }
@@ -443,6 +449,8 @@ async function makePhotonSheetSvg(data) {
   <text x="32" y="488" class="bold">Notes:</text>
   <line x1="110" y1="488" x2="728" y2="488" class="thin"/>
   <line x1="32" y1="532" x2="728" y2="532" class="thin"/>
+  
+  ${matchIdBlock}
 </svg>
 `;
 }
