@@ -25,6 +25,9 @@
    Bracket support:
    If matchNum, bracketMatchId, and bracketLane are included, matchNum
    is treated as the tournament call number shown on the printed card.
+
+   Fix:
+   Match ID prints only once at the bottom left of the card.
 =========================================================== */
 
 const fs = require("fs");
@@ -269,8 +272,8 @@ async function makeMatchSheetSvg(data, options = {}) {
   ` : "";
 
   const matchIdBlock = matchId ? `
-    <text x="32" y="558" class="tinyBold">Match ID:</text>
-    <text x="92" y="558" class="tinyText">${matchId}</text>
+    <text x="32" y="552" class="tinyBold">Match ID:</text>
+    <text x="92" y="552" class="tinyText">${matchId}</text>
   ` : "";
 
   return `
@@ -284,7 +287,7 @@ async function makeMatchSheetSvg(data, options = {}) {
     .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
     .smallBold { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; }
     .tinyText { font-family: Arial, Helvetica, sans-serif; font-size: 11px; }
-	.tinyBold { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; }
+    .tinyBold { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; dominant-baseline: middle; }
     .qrTitle { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
@@ -309,7 +312,6 @@ async function makeMatchSheetSvg(data, options = {}) {
   <text x="32" y="180" class="bold">Player B:</text>
   <text x="135" y="180" class="text">${playerB}</text>
 
-  ${matchIdBlock}
   ${qrBlock}
 
   <rect x="32" y="230" width="500" height="170" class="line"/>
@@ -342,7 +344,7 @@ async function makeMatchSheetSvg(data, options = {}) {
   <line x1="110" y1="445" x2="728" y2="445" class="thin"/>
   <line x1="32" y1="490" x2="728" y2="490" class="thin"/>
   <line x1="32" y1="535" x2="728" y2="535" class="thin"/>
-  
+
   ${matchIdBlock}
 </svg>
 `;
@@ -382,8 +384,8 @@ async function makePhotonSheetSvg(data) {
   ` : "";
 
   const matchIdBlock = matchId ? `
-    <text x="32" y="558" class="tinyBold">Match ID:</text>
-    <text x="92" y="558" class="tinyText">${matchId}</text>
+    <text x="32" y="552" class="tinyBold">Match ID:</text>
+    <text x="92" y="552" class="tinyText">${matchId}</text>
   ` : "";
 
   return `
@@ -397,7 +399,7 @@ async function makePhotonSheetSvg(data) {
     .smallText { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
     .smallBold { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; }
     .tinyText { font-family: Arial, Helvetica, sans-serif; font-size: 11px; }
-	.tinyBold { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; }
+    .tinyBold { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; }
     .helper { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .6px; }
     .cell { font-family: Arial, Helvetica, sans-serif; font-size: 25px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .nameLeft { font-family: Arial, Helvetica, sans-serif; font-size: 21px; font-weight: 700; dominant-baseline: middle; }
@@ -423,8 +425,6 @@ async function makePhotonSheetSvg(data) {
   <text x="32" y="190" class="bold">Player B:</text>
   <text x="135" y="190" class="text">${playerB}</text>
 
-  ${matchIdBlock}
-
   <text x="32" y="246" class="helper">BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3</text>
 
   ${qrBlock}
@@ -449,7 +449,7 @@ async function makePhotonSheetSvg(data) {
   <text x="32" y="488" class="bold">Notes:</text>
   <line x1="110" y1="488" x2="728" y2="488" class="thin"/>
   <line x1="32" y1="532" x2="728" y2="532" class="thin"/>
-  
+
   ${matchIdBlock}
 </svg>
 `;
@@ -585,8 +585,13 @@ function printRankMatch(printer, data) {
     .text(line("="))
     .text(`Date/Time: ${printedAt}`)
     .text("Location: ____________________________")
-    .text(`Match: ${displayMatchLabel}`)
-    .text(bracketInfoLine ? `Bracket ID: ${bracketInfoLine}` : "")
+    .text(`Match: ${displayMatchLabel}`);
+
+  if (bracketInfoLine) {
+    printer.text(`Bracket ID: ${bracketInfoLine}`);
+  }
+
+  printer
     .text(`Table: ${tableNum}`)
     .text(`Ref: ${refName}`)
     .text("Wit(s) | Alt Ref(s)")
