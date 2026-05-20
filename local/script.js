@@ -829,6 +829,13 @@ function buildPreviewStyle(){
         font-size: 14px;
       }
 
+	  .preview-match-id-bottom {
+  		position: absolute;
+  		left: 32px;
+  		top: 548px;
+  		font-size: 11px;
+	  }
+	  
       .preview-score-table {
         position: absolute;
         left: 32px;
@@ -1150,10 +1157,10 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
         </div>
 
         ${matchId ? `
-          <div class="preview-match-id">
-            <strong>Match ID:</strong> ${escapeHtml(matchId)}
-          </div>
-        ` : ""}
+  <div class="preview-match-id-bottom">
+    <strong>Match ID:</strong> ${escapeHtml(matchId)}
+  </div>
+` : ""}
 
         <table class="preview-score-table">
           <tr>
@@ -1218,10 +1225,10 @@ function buildPhotonPreviewHTML({ matchNum, tableNum, refName, playerA, playerB,
         </div>
 
         ${matchId ? `
-          <div class="preview-match-id">
-            <strong>Match ID:</strong> ${escapeHtml(matchId)}
-          </div>
-        ` : ""}
+  <div class="preview-match-id-bottom">
+    <strong>Match ID:</strong> ${escapeHtml(matchId)}
+  </div>
+` : ""}
 
         <div class="photon-helper-line">
           BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3
