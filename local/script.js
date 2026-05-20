@@ -68,6 +68,34 @@ function getDisplayMatchLabel(matchNum = getTournamentMatchNum(), bracketMatchId
   return "";
 }
 
+function buildBottomMatchIdHTML(matchId){
+  const pieces = [];
+
+  if(matchId){
+    pieces.push(`<strong>Match ID:</strong> ${escapeHtml(matchId)}`);
+  }
+
+  const displayMatch = getDisplayMatchLabel();
+  if(displayMatch){
+    pieces.push(`<strong>Tournament Match:</strong> ${escapeHtml(displayMatch)}`);
+  }
+
+  const bracketMatchId = getBracketMatchId();
+  if(bracketMatchId){
+    pieces.push(`<strong>Bracket ID:</strong> ${escapeHtml(bracketMatchId)}`);
+  }
+
+  if(!pieces.length){
+    return "";
+  }
+
+  return `
+    <div class="preview-match-id-bottom">
+      ${pieces.join(" &nbsp; | &nbsp; ")}
+    </div>
+  `;
+}
+
 function getRoomMapParam(){
   const raw = getParam("roomMap");
 
@@ -805,14 +833,6 @@ function buildPreviewStyle(){
         top: 104px;
         font-size: 22px;
       }
-      
-      .preview-bracket-match {
-  		position: absolute;
-  		left: 32px;
-  		top: 126px;
-  		font-size: 15px;
-  		font-weight: bold;
-	   }
 
       .preview-player-lines {
         position: absolute;
@@ -822,20 +842,13 @@ function buildPreviewStyle(){
         line-height: 1.45;
       }
 
-      .preview-match-id {
+      .preview-match-id-bottom {
         position: absolute;
         left: 32px;
-        top: 214px;
-        font-size: 14px;
+        top: 548px;
+        font-size: 11px;
       }
 
-	  .preview-match-id-bottom {
-  		position: absolute;
-  		left: 32px;
-  		top: 548px;
-  		font-size: 11px;
-	  }
-	  
       .preview-score-table {
         position: absolute;
         left: 32px;
@@ -1139,12 +1152,6 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
         <h2>AIRHOCKEY MATCH SHEET - Match ${escapeHtml(matchNum || "_____")}</h2>
 
         <div class="preview-top-line">
-        ${getDisplayMatchLabel() ? `
-  <div class="preview-bracket-match">
-    <strong>Tournament Match:</strong> ${escapeHtml(getDisplayMatchLabel())}
-    ${getBracketMatchId() ? ` &nbsp; <strong>Bracket ID:</strong> ${escapeHtml(getBracketMatchId())}` : ""}
-  </div>
-` : ""}
           <strong>Table #:</strong> ${escapeHtml(tableNum || "______")}
           &nbsp;&nbsp;&nbsp;
           <strong>Ref:</strong> ${escapeHtml(refName || "____________")}
@@ -1156,11 +1163,7 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
           <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
         </div>
 
-        ${matchId ? `
-  <div class="preview-match-id-bottom">
-    <strong>Match ID:</strong> ${escapeHtml(matchId)}
-  </div>
-` : ""}
+        ${buildBottomMatchIdHTML(matchId)}
 
         <table class="preview-score-table">
           <tr>
@@ -1224,11 +1227,7 @@ function buildPhotonPreviewHTML({ matchNum, tableNum, refName, playerA, playerB,
           <strong>Player B:</strong> ${escapeHtml(playerB || "____________________")}
         </div>
 
-        ${matchId ? `
-  <div class="preview-match-id-bottom">
-    <strong>Match ID:</strong> ${escapeHtml(matchId)}
-  </div>
-` : ""}
+        ${buildBottomMatchIdHTML(matchId)}
 
         <div class="photon-helper-line">
           BIG BOX SCORECARD FOR BEST OF 1 OR BEST OF 3
@@ -1626,15 +1625,15 @@ notepad /p path\\to\\${filename}`
   });
 
   window.addEventListener("load", () => {
-  const matchLength = getMatchLengthParam();
-  const tournamentMatchNum = getTournamentMatchNum();
-  const tableNum = getParam("table");
-  const refName  = getParam("ref");
-  const playerA  = getParam("playerA") || getParam("p1");
-  const playerB  = getParam("playerB") || getParam("p2");
-  const matchId  = getParam("matchid");
+    const matchLength = getMatchLengthParam();
+    const tournamentMatchNum = getTournamentMatchNum();
+    const tableNum = getParam("table");
+    const refName  = getParam("ref");
+    const playerA  = getParam("playerA") || getParam("p1");
+    const playerB  = getParam("playerB") || getParam("p2");
+    const matchId  = getParam("matchid");
 
-  const matchNum = tournamentMatchNum || matchLength;
+    const matchNum = tournamentMatchNum || matchLength;
 
     if(matchId){
       CURRENT_MATCH_ID = matchId;
