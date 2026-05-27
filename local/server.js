@@ -26,6 +26,12 @@
    If matchNum, bracketMatchId, and bracketLane are included, matchNum
    is treated as the tournament call number shown on the printed card.
 
+   Dynamic match boxes:
+   Regular match sheets now respect payload.maxGames:
+   3 boxes for 2 of 3
+   5 boxes for 3 of 5
+   7 boxes for 4 of 7
+
    Fix:
    Match ID prints only once at the bottom left of the card.
 =========================================================== */
@@ -115,6 +121,79 @@ function sanitizeDataImage(value) {
   }
 
   return clean;
+}
+
+function normalizeMaxGames(value) {
+  const n = Number(value || 7);
+
+  if (n === 3) return 3;
+  if (n === 5) return 5;
+  if (n === 7) return 7;
+
+  return 7;
+}
+
+function getGamesToWinFromMaxGames(maxGames) {
+  const n = normalizeMaxGames(maxGames);
+
+  if (n === 3) return 2;
+  if (n === 5) return 3;
+  return 4;
+}
+
+function getMatchFormatLabel(data = {}) {
+  const fromPayload = safeText(data.matchFormatLabel || "").trim();
+
+  if (fromPayload) {
+    return fromPayload;
+  }
+
+  const maxGames = normalizeMaxGames(data.maxGames);
+  const gamesToWin = Number(data.gamesToWin || getGamesToWinFromMaxGames(maxGames));
+
+  return `${gamesToWin} OF ${maxGames}`;
+}
+
+function buildRegularScoreGridSvg({ x = 32, y = 230, width = 500, height = 170, maxGames = 7, playerA = "", playerB = "" }) {
+  const safeMaxGames = normalizeMaxGames(maxGames);
+  const playerColW = 260;
+  const gameAreaW = width - playerColW;
+  const gameColW = gameAreaW / safeMaxGames;
+
+  const headerBottomY = y + 40;
+  const rowDividerY = y + 105;
+  const bottomY = y + height;
+  const playerColX = x + playerColW;
+
+  const verticalLines = [];
+  const headerTexts = [];
+
+  verticalLines.push(`<line x1="${playerColX}" y1="${y}" x2="${playerColX}" y2="${bottomY}" class="line"/>`);
+
+  for (let i = 1; i < safeMaxGames; i++) {
+    const lineX = playerColX + (gameColW * i);
+    verticalLines.push(`<line x1="${lineX.toFixed(2)}" y1="${y}" x2="${lineX.toFixed(2)}" y2="${bottomY}" class="thin"/>`);
+  }
+
+  for (let i = 0; i < safeMaxGames; i++) {
+    const centerX = playerColX + (gameColW * i) + (gameColW / 2);
+    headerTexts.push(`<text x="${centerX.toFixed(2)}" y="${y + 20}" class="cell">${i + 1}</text>`);
+  }
+
+  return `
+  <rect x="${x}" y="${y}" width="${width}" height="${height}" class="line"/>
+
+  <line x1="${x}" y1="${headerBottomY}" x2="${x + width}" y2="${headerBottomY}" class="line"/>
+  <line x1="${x}" y1="${rowDividerY}" x2="${x + width}" y2="${rowDividerY}" class="thin"/>
+
+  ${verticalLines.join("\n  ")}
+
+  <text x="${x + (playerColW / 2)}" y="${y + 20}" class="cell">Player</text>
+  ${headerTexts.join("\n  ")}
+
+  <text x="${x + 18}" y="${y + 72}" class="nameLeft">${playerA}</text>
+  <text x="${x + 18}" y="${y + 137}" class="nameLeft">${playerB}</text>
+  `;
 }
 
 function printWithEscpos(jobFn) {
@@ -254,6 +333,9 @@ async function makeMatchSheetSvg(data, options = {}) {
   const roomMapDataUrl = isBlank ? "" : sanitizeDataImage(data.roomMapDataUrl);
   const roomMapLabel = rawTableNum ? `GO TO TABLE ${rawTableNum}` : "ROOM MAP";
 
+  const maxGames = isBlank ? 7 : normalizeMaxGames(data.maxGames);
+  const matchFormatLabel = isBlank ? "4 OF 7" : xmlEscape(getMatchFormatLabel({ ...data, maxGames }));
+
   const qrDataUrl = await makeQrDataUrl(scoreboardUrl);
   const qrBlock = makeQrBlock({
     qrDataUrl,
@@ -271,10 +353,25 @@ async function makeMatchSheetSvg(data, options = {}) {
     <text x="125" y="126" class="smallText">${bracketInfoLine}</text>
   ` : "";
 
+  const matchFormatBlock = !isBlank ? `
+    <text x="395" y="126" class="smallBold">Format:</text>
+    <text x="455" y="126" class="smallText">${matchFormatLabel}</text>
+  ` : "";
+
   const matchIdBlock = matchId ? `
     <text x="32" y="552" class="tinyBold">Match ID:</text>
     <text x="92" y="552" class="tinyText">${matchId}</text>
   ` : "";
+
+  const scoreGridBlock = buildRegularScoreGridSvg({
+    x: 32,
+    y: 230,
+    width: 500,
+    height: 170,
+    maxGames,
+    playerA,
+    playerB
+  });
 
   return `
 <svg width="760" height="576" viewBox="0 0 760 576" xmlns="http://www.w3.org/2000/svg">
@@ -305,6 +402,7 @@ async function makeMatchSheetSvg(data, options = {}) {
   <text x="275" y="102" class="text">${refName}</text>
 
   ${bracketInfoBlock}
+  ${matchFormatBlock}
 
   <text x="32" y="148" class="bold">Player A:</text>
   <text x="135" y="148" class="text">${playerA}</text>
@@ -314,31 +412,7 @@ async function makeMatchSheetSvg(data, options = {}) {
 
   ${qrBlock}
 
-  <rect x="32" y="230" width="500" height="170" class="line"/>
-
-  <line x1="32" y1="270" x2="532" y2="270" class="line"/>
-  <line x1="32" y1="335" x2="532" y2="335" class="thin"/>
-
-  <line x1="292" y1="230" x2="292" y2="400" class="line"/>
-
-  <line x1="326" y1="230" x2="326" y2="400" class="thin"/>
-  <line x1="360" y1="230" x2="360" y2="400" class="thin"/>
-  <line x1="394" y1="230" x2="394" y2="400" class="thin"/>
-  <line x1="428" y1="230" x2="428" y2="400" class="thin"/>
-  <line x1="462" y1="230" x2="462" y2="400" class="thin"/>
-  <line x1="496" y1="230" x2="496" y2="400" class="thin"/>
-
-  <text x="162" y="250" class="cell">Player</text>
-  <text x="309" y="250" class="cell">1</text>
-  <text x="343" y="250" class="cell">2</text>
-  <text x="377" y="250" class="cell">3</text>
-  <text x="411" y="250" class="cell">4</text>
-  <text x="445" y="250" class="cell">5</text>
-  <text x="479" y="250" class="cell">6</text>
-  <text x="514" y="250" class="cell">7</text>
-
-  <text x="50" y="302" class="nameLeft">${playerA}</text>
-  <text x="50" y="367" class="nameLeft">${playerB}</text>
+  ${scoreGridBlock}
 
   <text x="32" y="445" class="bold">Notes:</text>
   <line x1="110" y1="445" x2="728" y2="445" class="thin"/>
@@ -651,6 +725,9 @@ app.post("/print-match", async (req, res) => {
       playerA: data.playerA,
       playerB: data.playerB,
       matchId: data.matchId,
+      gamesToWin: data.gamesToWin,
+      maxGames: data.maxGames,
+      matchFormatLabel: data.matchFormatLabel,
       scoreboardUrl: data.scoreboardUrl,
       hasScoreboardUrl: !!data.scoreboardUrl,
       hasCustomLogo: !!data.customLogoDataUrl,
