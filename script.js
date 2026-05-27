@@ -4,6 +4,7 @@
    scoreboard QR code support, custom logo support,
    Photon doubles sheet support,
    room map preview support,
+   dynamic regular match card boxes for 2 of 3, 3 of 5, 4 of 7,
    and browser previews that better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
@@ -50,6 +51,57 @@ function getBracketLane(){
 
 function getMatchLengthParam(){
   return getParam("match") || "";
+}
+
+function getGamesToWinFromValue(value){
+  const raw = String(value || "").trim().toLowerCase();
+
+  if(!raw){
+    return 4;
+  }
+
+  // Handles URL/input values like:
+  // 2, 3, 4
+  // 2 of 3, 3 of 5, 4 of 7
+  // best of 3, best of 5, best of 7
+  if(raw === "2" || raw.includes("2 of 3") || raw.includes("best of 3")) return 2;
+  if(raw === "3" || raw.includes("3 of 5") || raw.includes("best of 5")) return 3;
+  if(raw === "4" || raw.includes("4 of 7") || raw.includes("best of 7")) return 4;
+
+  return 4;
+}
+
+function getMaxGamesFromGamesToWin(gamesToWin){
+  const n = Number(gamesToWin || 4);
+
+  if(n === 2) return 3;
+  if(n === 3) return 5;
+  if(n === 4) return 7;
+
+  return 7;
+}
+
+function getMatchCardGameInfo(matchNum = ""){
+  // Prefer the URL match length because TD can also pass tournament match numbers.
+  const matchLengthParam = getMatchLengthParam();
+  const source = matchLengthParam || matchNum;
+
+  const gamesToWin = getGamesToWinFromValue(source);
+  const maxGames = getMaxGamesFromGamesToWin(gamesToWin);
+
+  return {
+    gamesToWin,
+    maxGames,
+    label: `${gamesToWin} OF ${maxGames}`
+  };
+}
+
+function buildGameHeaderCells(maxGames){
+  return Array.from({ length: maxGames }, (_, i) => `<th>${i + 1}</th>`).join("");
+}
+
+function buildGameBlankCells(maxGames){
+  return Array.from({ length: maxGames }, () => `<td></td>`).join("");
 }
 
 function getDisplayMatchLabel(matchNum = getTournamentMatchNum(), bracketMatchId = getBracketMatchId(), bracketLane = getBracketLane()){
@@ -890,6 +942,21 @@ function buildPreviewStyle(){
         width: 34px;
       }
 
+      .preview-score-table.game-count-3 th:not(:first-child),
+      .preview-score-table.game-count-3 td:not(:first-child) {
+        width: 80px;
+      }
+
+      .preview-score-table.game-count-5 th:not(:first-child),
+      .preview-score-table.game-count-5 td:not(:first-child) {
+        width: 48px;
+      }
+
+      .preview-score-table.game-count-7 th:not(:first-child),
+      .preview-score-table.game-count-7 td:not(:first-child) {
+        width: 34px;
+      }
+
       .preview-room-map-label {
         position: absolute;
         left: 548px;
@@ -1145,6 +1212,8 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
     matchId
   });
 
+  const gameInfo = getMatchCardGameInfo(matchNum);
+
   return `
     ${buildPreviewStyle()}
     <div class="preview-scale-wrap">
@@ -1165,24 +1234,18 @@ function buildMatchPreviewHTML({ matchNum, tableNum, refName, playerA, playerB, 
 
         ${buildBottomMatchIdHTML(matchId)}
 
-        <table class="preview-score-table">
+        <table class="preview-score-table game-count-${gameInfo.maxGames}">
           <tr>
             <th>Player</th>
-            <th>1</th>
-            <th>2</th>
-            <th>3</th>
-            <th>4</th>
-            <th>5</th>
-            <th>6</th>
-            <th>7</th>
+            ${buildGameHeaderCells(gameInfo.maxGames)}
           </tr>
           <tr>
             <td>${escapeHtml(playerA || "")}</td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            ${buildGameBlankCells(gameInfo.maxGames)}
           </tr>
           <tr>
             <td>${escapeHtml(playerB || "")}</td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            ${buildGameBlankCells(gameInfo.maxGames)}
           </tr>
         </table>
 
@@ -1281,7 +1344,7 @@ function buildBlankPreviewHTML(){
           <strong>Player B:</strong> ____________________
         </div>
 
-        <table class="preview-score-table">
+        <table class="preview-score-table game-count-7">
           <tr>
             <th>Player</th>
             <th>1</th>
@@ -1378,6 +1441,7 @@ function getCurrentPrintPayload(){
   const playerB  = $("playerB")?.value  || "";
   const customLogoDataUrl = getCustomLogoDataUrl();
   const roomMapDataUrl = getRoomMapDataUrlForPrint();
+  const gameInfo = getMatchCardGameInfo(matchNum);
 
   if(!CURRENT_MATCH_ID && CURRENT_MODE !== "blank"){
     CURRENT_MATCH_ID = getMatchId();
@@ -1442,7 +1506,10 @@ function getCurrentPrintPayload(){
       matchId: "",
       scoreboardUrl: "",
       customLogoDataUrl,
-      roomMapDataUrl
+      roomMapDataUrl,
+      gamesToWin: 4,
+      maxGames: 7,
+      matchFormatLabel: "4 OF 7"
     };
   }
 
@@ -1456,7 +1523,10 @@ function getCurrentPrintPayload(){
     matchId: CURRENT_MATCH_ID,
     scoreboardUrl,
     customLogoDataUrl,
-    roomMapDataUrl
+    roomMapDataUrl,
+    gamesToWin: gameInfo.gamesToWin,
+    maxGames: gameInfo.maxGames,
+    matchFormatLabel: gameInfo.label
   };
 }
 
