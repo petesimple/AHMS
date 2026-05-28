@@ -6,6 +6,7 @@
    room map preview support,
    dynamic regular match card boxes for 2 of 3, 3 of 5, 4 of 7,
    manual match format dropdown when no TD/AHSS handoff is present,
+   bottom gear match tools,
    and browser previews that better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
@@ -376,10 +377,10 @@ function resizeLogoToDataUrl(file, maxWidth = 520, maxHeight = 180){
 function injectMatchFormatControls(){
   if($("matchFormatSelect")) return;
 
-  const form = $("matchForm");
+  const advancedTools = $("ahmsAdvancedTools");
 
-  if(!form){
-    console.warn("Missing #matchForm, cannot inject match format dropdown.");
+  if(!advancedTools){
+    console.warn("Missing #ahmsAdvancedTools, cannot inject match format dropdown.");
     return;
   }
 
@@ -392,47 +393,6 @@ function injectMatchFormatControls(){
   wrap.className = `match-format-control-wrap ${isHandoff ? "is-handoff" : ""}`;
 
   wrap.innerHTML = `
-    <style>
-      .match-format-control-wrap {
-        margin: 10px 0;
-        font-family: Arial, Helvetica, sans-serif;
-      }
-
-      .match-format-control-wrap label {
-        display: block;
-        font-weight: 700;
-        margin-bottom: 5px;
-      }
-
-      #matchFormatSelect {
-        width: 100%;
-        max-width: 260px;
-        padding: 8px 10px;
-        border: 1px solid #999;
-        border-radius: 8px;
-        background: #fff;
-        color: #000;
-        font-size: 15px;
-      }
-
-      .match-format-help {
-        margin-top: 5px;
-        font-size: 12px;
-        color: #555;
-        line-height: 1.35;
-      }
-
-      .match-format-control-wrap.is-handoff .match-format-help {
-        color: #333;
-      }
-
-      @media print {
-        .match-format-control-wrap {
-          display: none !important;
-        }
-      }
-    </style>
-
     <label for="matchFormatSelect">Match Format</label>
     <select id="matchFormatSelect">
       <option value="2">2 of 3</option>
@@ -444,14 +404,7 @@ function injectMatchFormatControls(){
     </div>
   `;
 
-  const matchInput = $("matchNum");
-  const anchor = matchInput?.closest("label, .form-row, .field-row, div, p") || matchInput;
-
-  if(anchor && anchor.parentNode){
-    anchor.insertAdjacentElement("afterend", wrap);
-  } else {
-    form.prepend(wrap);
-  }
+  advancedTools.appendChild(wrap);
 
   const select = $("matchFormatSelect");
 
@@ -532,6 +485,14 @@ function injectLogoControls(){
         box-shadow: 0 8px 22px rgba(0,0,0,0.18);
       }
 
+      .ahms-settings-card {
+        margin-bottom: 16px;
+      }
+
+      .ahms-settings-card:last-child {
+        margin-bottom: 0;
+      }
+
       .ahms-settings-card h3 {
         margin: 0 0 6px 0;
         font-size: 15px;
@@ -543,6 +504,70 @@ function injectLogoControls(){
         font-size: 12px;
         line-height: 1.4;
         color: #222;
+      }
+
+      .ahms-settings-card label {
+        display: block;
+        font-weight: 700;
+        margin: 8px 0 5px 0;
+      }
+
+      .ahms-settings-card input,
+      .ahms-settings-card select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        border: 1px solid #999;
+        border-radius: 8px;
+        background: #fff;
+        color: #000;
+        font-size: 15px;
+      }
+
+      .match-format-control-wrap {
+        margin: 10px 0;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .match-format-control-wrap label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 5px;
+      }
+
+      .match-format-help {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #555;
+        line-height: 1.35;
+      }
+
+      .match-format-control-wrap.is-handoff .match-format-help {
+        color: #333;
+      }
+
+      .ahms-tool-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .ahms-tool-buttons button {
+        appearance: none;
+        border: 1px solid #999;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #fff;
+        color: #000;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      .ahms-tool-buttons button:hover {
+        background: #e9e9e9;
       }
 
       .ahms-logo-row {
@@ -621,9 +646,27 @@ function injectLogoControls(){
 
       <div class="ahms-settings-body">
         <div class="ahms-settings-card">
+          <h3>Match Tools</h3>
+          <p>
+            Less-used match card options live here to keep the main page clean.
+          </p>
+
+          <label>Match #<input type="number" id="matchNum"></label>
+
+          <div id="ahmsAdvancedTools"></div>
+
+          <div class="ahms-tool-buttons">
+            <button id="printBlankBtn" type="button">Print a Blank Card</button>
+            <button id="printPhotonBtn" type="button">Photon Doubles Sheet</button>
+            <button id="printRankMatchBtn" type="button">Print Rank Match</button>
+          </div>
+        </div>
+
+        <div class="ahms-settings-card">
           <h3>Custom Match Card Logo</h3>
           <p>
             Optional. Add a small logo above the scoreboard QR code on printed match cards.
+            After changing the logo, generate the match card again before printing so the new logo is applied.
           </p>
 
           <div class="ahms-logo-row">
@@ -1667,8 +1710,8 @@ function initAHMS(){
   console.log("AHMS script loaded.");
   console.log("Print bridge URL:", PRINT_SERVER_URL);
 
-  injectMatchFormatControls();
   injectLogoControls();
+  injectMatchFormatControls();
 
   const matchForm = $("matchForm");
   const printBtn = $("printBtn");
