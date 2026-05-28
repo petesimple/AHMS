@@ -5,6 +5,7 @@
    Photon doubles sheet support,
    room map preview support,
    dynamic regular match card boxes for 2 of 3, 3 of 5, 4 of 7,
+   manual match format dropdown when no TD/AHSS handoff is present,
    and browser previews that better match printed output.
 
    Browser app sends structured JSON to Raspberry Pi bridge:
@@ -20,6 +21,7 @@ const SCOREBOARD_BASE_URL = "https://petesimple.github.io/airhockey-score-system
 const PHOTON_BASE_URL = "https://petesimple.github.io/photon-blitz/";
 const QR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js";
 const CUSTOM_LOGO_KEY = "AHMS_CUSTOM_LOGO_DATA_URL";
+const MATCH_FORMAT_KEY = "AHMS_MATCH_FORMAT";
 
 // ============ Utility ============
 function $(id){ return document.getElementById(id); }
@@ -53,6 +55,10 @@ function getMatchLengthParam(){
   return getParam("match") || "";
 }
 
+function hasMatchLengthHandoff(){
+  return !!getMatchLengthParam();
+}
+
 function getGamesToWinFromValue(value){
   const raw = String(value || "").trim().toLowerCase();
 
@@ -81,10 +87,36 @@ function getMaxGamesFromGamesToWin(gamesToWin){
   return 7;
 }
 
-function getMatchCardGameInfo(matchNum = ""){
-  // Prefer the URL match length because TD can also pass tournament match numbers.
+function getSelectedMatchFormatValue(){
+  const select = $("matchFormatSelect");
+
+  if(select && select.value){
+    return select.value;
+  }
+
+  return localStorage.getItem(MATCH_FORMAT_KEY) || "4";
+}
+
+function getEffectiveMatchLengthValue(matchNum = ""){
+  // TD/AHSS handoff wins first. This keeps generated links authoritative.
   const matchLengthParam = getMatchLengthParam();
-  const source = matchLengthParam || matchNum;
+
+  if(matchLengthParam){
+    return matchLengthParam;
+  }
+
+  // Direct AHMS use falls back to the injected dropdown.
+  const selected = getSelectedMatchFormatValue();
+
+  if(selected){
+    return selected;
+  }
+
+  return matchNum || "4";
+}
+
+function getMatchCardGameInfo(matchNum = ""){
+  const source = getEffectiveMatchLengthValue(matchNum);
 
   const gamesToWin = getGamesToWinFromValue(source);
   const maxGames = getMaxGamesFromGamesToWin(gamesToWin);
@@ -339,6 +371,107 @@ function resizeLogoToDataUrl(file, maxWidth = 520, maxHeight = 180){
     reader.onerror = () => reject(new Error("Could not read selected logo file."));
     reader.readAsDataURL(file);
   });
+}
+
+function injectMatchFormatControls(){
+  if($("matchFormatSelect")) return;
+
+  const form = $("matchForm");
+
+  if(!form){
+    console.warn("Missing #matchForm, cannot inject match format dropdown.");
+    return;
+  }
+
+  const matchLengthParam = getMatchLengthParam();
+  const initialGamesToWin = getGamesToWinFromValue(matchLengthParam || localStorage.getItem(MATCH_FORMAT_KEY) || "4");
+  const isHandoff = hasMatchLengthHandoff();
+
+  const wrap = document.createElement("div");
+  wrap.id = "matchFormatControlWrap";
+  wrap.className = `match-format-control-wrap ${isHandoff ? "is-handoff" : ""}`;
+
+  wrap.innerHTML = `
+    <style>
+      .match-format-control-wrap {
+        margin: 10px 0;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .match-format-control-wrap label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 5px;
+      }
+
+      #matchFormatSelect {
+        width: 100%;
+        max-width: 260px;
+        padding: 8px 10px;
+        border: 1px solid #999;
+        border-radius: 8px;
+        background: #fff;
+        color: #000;
+        font-size: 15px;
+      }
+
+      .match-format-help {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #555;
+        line-height: 1.35;
+      }
+
+      .match-format-control-wrap.is-handoff .match-format-help {
+        color: #333;
+      }
+
+      @media print {
+        .match-format-control-wrap {
+          display: none !important;
+        }
+      }
+    </style>
+
+    <label for="matchFormatSelect">Match Format</label>
+    <select id="matchFormatSelect">
+      <option value="2">2 of 3</option>
+      <option value="3">3 of 5</option>
+      <option value="4">4 of 7</option>
+    </select>
+    <div class="match-format-help">
+      ${isHandoff ? "Format came from the TD/AHSS handoff. Change the source link to override it." : "Used when AHMS is opened directly without a TD or AHSS match handoff."}
+    </div>
+  `;
+
+  const matchInput = $("matchNum");
+  const anchor = matchInput?.closest("label, .form-row, .field-row, div, p") || matchInput;
+
+  if(anchor && anchor.parentNode){
+    anchor.insertAdjacentElement("afterend", wrap);
+  } else {
+    form.prepend(wrap);
+  }
+
+  const select = $("matchFormatSelect");
+
+  if(select){
+    select.value = String(initialGamesToWin || 4);
+
+    if(matchLengthParam){
+      select.value = String(getGamesToWinFromValue(matchLengthParam));
+      select.disabled = true;
+      select.title = "This value came from the TD/AHSS handoff URL.";
+    }
+
+    select.addEventListener("change", () => {
+      localStorage.setItem(MATCH_FORMAT_KEY, select.value || "4");
+
+      if(CURRENT_MODE === "match" && $("output") && !$("output").classList.contains("hidden")){
+        $("matchForm")?.dispatchEvent(new Event("submit"));
+      }
+    });
+  }
 }
 
 function injectLogoControls(){
@@ -607,7 +740,7 @@ function buildScoreboardUrl({ matchNum, tableNum, refName, playerA, playerB, mat
 
   params.set("p1", playerA || "");
   params.set("p2", playerB || "");
-  params.set("match", matchNum || "2");
+  params.set("match", getEffectiveMatchLengthValue(matchNum));
 
   if(matchId) params.set("matchid", matchId);
   if(tableNum) params.set("table", tableNum);
@@ -622,7 +755,7 @@ function buildPhotonUrl({ matchNum, tableNum, refName, playerA, playerB, matchId
   params.set("p1", playerA || "");
   params.set("p2", playerB || "");
 
-  if(matchNum) params.set("match", matchNum);
+  if(matchNum) params.set("match", getEffectiveMatchLengthValue(matchNum));
   if(matchId) params.set("matchid", matchId);
   if(tableNum) params.set("table", tableNum);
   if(refName) params.set("ref", refName);
@@ -1534,6 +1667,7 @@ function initAHMS(){
   console.log("AHMS script loaded.");
   console.log("Print bridge URL:", PRINT_SERVER_URL);
 
+  injectMatchFormatControls();
   injectLogoControls();
 
   const matchForm = $("matchForm");
